@@ -45,20 +45,24 @@ func Run() error {
 	// 6. Роутер
 	mux := http.NewServeMux()
 
-	// Healthcheck
+	// ── Публичные маршруты ──
 	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok","message":"Super-App backend is running"}`))
+		w.Write([]byte(`{"status":"ok","message":"App4Every backend is running"}`))
 	})
-
-	// Auth роуты
 	mux.HandleFunc("/api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.Refresh)
 	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
+	mux.HandleFunc("/api/v1/auth/forgot-password", authHandler.ForgotPassword)
+	mux.HandleFunc("/api/v1/auth/reset-password", authHandler.ResetPassword)
 
-	// Пример защищенного роута
+	// ── Защищённые маршруты ──
+	// Все маршруты в protectedMux проходят через AuthMiddleware.
+	authMiddleware := delivery.AuthMiddleware(cfg)
 	protectedMux := http.NewServeMux()
+
+	// GET /api/v1/auth/me — данные текущего пользователя
 	protectedMux.HandleFunc("/api/v1/auth/me", func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Context().Value(delivery.UserIDKey).(int64)
 
@@ -75,9 +79,15 @@ func Run() error {
 		json.NewEncoder(w).Encode(user)
 	})
 
-	// Применяем AuthMiddleware на защищенные роуты
-	authMiddleware := delivery.AuthMiddleware(cfg)
+	// PUT /api/v1/users/profile — обновление username и email
+	protectedMux.HandleFunc("/api/v1/users/profile", authHandler.UpdateProfile)
+
+	// POST /api/v1/users/password — смена пароля
+	protectedMux.HandleFunc("/api/v1/users/password", authHandler.ChangePassword)
+
+	// Регистрируем защищённые префиксы в основном мультиплексоре
 	mux.Handle("/api/v1/auth/me", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/users/", authMiddleware(protectedMux)) // /users/ — суффикс "/" = префикс-матчинг
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

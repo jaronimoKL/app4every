@@ -1,12 +1,16 @@
 :80 {
-    # Для простоты локального запуска без DNS-имен проксируем обычный HTTP порт 80
-    
-    # API запросы на Go Backend
+    # Заметки → notebook-service:8081
+    # Важно: handle более специфичные пути ПЕРВЫМИ
+    handle /api/v1/notes* {
+        reverse_proxy notebook-service:8081
+    }
+
+    # Все остальные /api/* → auth-service:8080
     handle /api/* {
         reverse_proxy auth-service:8080
     }
 
-    # Все остальные запросы на Vue dev server
+    # Всё остальное → Vue dev server
     handle {
         reverse_proxy frontend:5173
     }

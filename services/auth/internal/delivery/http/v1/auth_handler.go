@@ -8,6 +8,7 @@ import (
 
 	"app4every/services/auth/internal/model"
 	"app4every/services/auth/internal/service"
+	delivery "app4every/services/auth/internal/delivery/http"
 )
 
 type AuthHandler struct {
@@ -18,89 +19,107 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
+// ── Вспомогательные функции ──
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
+}
+
+func writeError(w http.ResponseWriter, status int, errCode, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": errCode, "message": message})
+}
+
+// ── Auth ──
+
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
 		return
 	}
 
 	var req model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad_request","message":"invalid json"}`, http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
 		return
 	}
-
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, `{"error":"bad_request","message":"email and password are required"}`, http.StatusBadRequest)
+	if req.Username == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "username and password are required")
 		return
 	}
+	// email — необязателен
 
 	user, err := h.authService.Register(r.Context(), req)
 	if err != nil {
-		http.Error(w, `{"error":"internal_server_error","message":"failed to register user"}`, http.StatusInternalServerError)
+		if errors.Is(err, service.ErrUserAlreadyExists) {
+			writeError(w, http.StatusConflict, "conflict", "email or username already taken")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "registration failed")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	writeJSON(w, http.StatusCreated, user)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
 		return
 	}
 
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"bad_request","message":"invalid json"}`, http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+	if req.Identifier == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "identifier and password are required")
 		return
 	}
 
 	user, accessToken, refreshToken, err := h.authService.Login(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
-			http.Error(w, `{"error":"unauthorized","message":"invalid email or password"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "unauthorized", "invalid email or password")
 			return
 		}
-		http.Error(w, `{"error":"internal_server_error"}`, http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal_error", "")
 		return
 	}
 
-	// Устанавливаем Refresh Token в HttpOnly Cookie
+	// Refresh Token — в HttpOnly-куку (недоступна JS, защита от XSS)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
 		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
-		Secure:   false, // Для локальной разработки без HTTPS по localhost (в Caddy настроим)
+		Secure:   false, // true в продакшне с HTTPS
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(model.AuthResponse{
-		User:        *user,
-		AccessToken: accessToken,
-	})
+	writeJSON(w, http.StatusOK, model.AuthResponse{User: *user, AccessToken: accessToken})
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
 		return
 	}
 
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
-		http.Error(w, `{"error":"unauthorized","message":"missing refresh token"}`, http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "missing refresh token")
 		return
 	}
 
 	accessToken, refreshToken, err := h.authService.Refresh(r.Context(), cookie.Value)
 	if err != nil {
-		http.Error(w, `{"error":"unauthorized","message":"invalid or expired refresh token"}`, http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "invalid or expired refresh token")
 		return
 	}
 
@@ -114,24 +133,19 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"access_token": accessToken,
-	})
+	writeJSON(w, http.StatusOK, map[string]string{"access_token": accessToken})
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
 		return
 	}
 
-	cookie, err := r.Cookie("refresh_token")
-	if err == nil {
+	if cookie, err := r.Cookie("refresh_token"); err == nil {
 		_ = h.authService.Logout(r.Context(), cookie.Value)
 	}
 
-	// Удаляем куку
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
@@ -143,4 +157,122 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── Профиль (защищённые маршруты) ──
+
+// UpdateProfile обновляет username и email текущего пользователя.
+// PUT /api/v1/users/profile
+func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	var req model.UpdateProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+	if req.Email == "" || req.Username == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "username and email are required")
+		return
+	}
+
+	user, err := h.authService.UpdateProfile(r.Context(), userID, req)
+	if err != nil {
+		if errors.Is(err, service.ErrUserAlreadyExists) {
+			writeError(w, http.StatusConflict, "conflict", "email or username already taken")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to update profile")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}
+
+// ChangePassword меняет пароль текущего пользователя, требуя текущий пароль.
+// POST /api/v1/users/password
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	var req model.ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "current_password and new_password are required")
+		return
+	}
+
+	if err := h.authService.ChangePassword(r.Context(), userID, req); err != nil {
+		if errors.Is(err, service.ErrWrongPassword) {
+			writeError(w, http.StatusUnauthorized, "wrong_password", "current password is incorrect")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "failed to change password")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "password changed successfully"})
+}
+
+// ── Сброс пароля (публичные маршруты) ──
+
+// ForgotPassword — заглушка, всегда отвечает успехом.
+// POST /api/v1/auth/forgot-password
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	var req model.ForgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+
+	// Вызываем сервис (он логирует запрос), но клиенту всегда говорим "ок".
+	// Это защита от перебора: злоумышленник не узнает, существует ли email.
+	_ = h.authService.ForgotPassword(r.Context(), req.Email)
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "If an account with that email exists, we sent a reset link.",
+	})
+}
+
+// ResetPassword — заглушка.
+// POST /api/v1/auth/reset-password
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	var req model.ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+	if req.Token == "" || req.NewPassword == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "token and new_password are required")
+		return
+	}
+
+	if err := h.authService.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_token", "invalid or expired reset token")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Password reset successfully."})
 }

@@ -40,5 +40,23 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to auto-migrate users table: %w", err)
 	}
 
+	// Добавляем колонку username, если её ещё нет (безопасно для повторного запуска).
+	// PostgreSQL разрешает несколько NULL в UNIQUE-колонке, поэтому
+	// существующие строки без username не нарушат ограничение.
+	_, err = pool.Exec(ctx, `
+		ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100) UNIQUE;
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add username column: %w", err)
+	}
+
+	// Делаем email необязательным — пользователи могут регистрироваться только с логином.
+	// PostgreSQL разрешает несколько NULL в UNIQUE-колонке.
+	_, err = pool.Exec(ctx, `ALTER TABLE users ALTER COLUMN email DROP NOT NULL;`)
+	if err != nil {
+		// Игнорируем ошибку если колонка уже nullable
+		_ = err
+	}
+
 	return pool, nil
 }

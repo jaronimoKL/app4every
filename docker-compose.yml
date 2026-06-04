@@ -13,6 +13,7 @@ services:
       - caddy_config:/config
     depends_on:
       - auth-service
+      - notebook-service
       - frontend
     networks:
       - app4every_network
@@ -22,8 +23,12 @@ services:
     build:
       context: ./services/auth
       dockerfile: Dockerfile
+      target: dev
     container_name: app4every-auth
     restart: unless-stopped
+    volumes:
+      - ./services/auth:/app
+      - /app/tmp
     environment:
       - APP_ENV=local
       - DB_HOST=postgres
@@ -39,6 +44,32 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+    networks:
+      - app4every_network
+
+  # 3. Go Backend (Notes service)
+  notebook-service:
+    build:
+      context: ./services/notebook
+      dockerfile: Dockerfile
+      target: dev
+    container_name: app4every-notebook
+    restart: unless-stopped
+    volumes:
+      - ./services/notebook:/app
+      - /app/tmp
+    environment:
+      - PORT=8081
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=super_user
+      - DB_PASSWORD=super_secure_password
+      - DB_NAME=app4every_db
+      - DB_SSLMODE=disable
+      - JWT_SECRET=your-very-secure-local-jwt-secret-key
+    depends_on:
+      postgres:
         condition: service_healthy
     networks:
       - app4every_network
