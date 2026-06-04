@@ -1,0 +1,104 @@
+services:
+  # 1. Reverse Proxy (Caddy)
+  caddy:
+    image: caddy:2-alpine
+    container_name: app4every-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - auth-service
+      - frontend
+    networks:
+      - app4every_network
+
+  # 2. Go Backend (Authentication and Profile Management)
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: app4every-auth
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=super_user
+      - DB_PASSWORD=super_secure_password
+      - DB_NAME=app4every_db
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-very-secure-local-jwt-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app4every_network
+
+  # 3. Vue.js Frontend (dev mode)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: app4every_frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - app4every_network
+
+  # 4. PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: app4every_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=super_user
+      - POSTGRES_PASSWORD=super_secure_password
+      - POSTGRES_DB=app4every_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U super_user -d app4every_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app4every_network
+
+  # 5. Redis
+  redis:
+    image: redis:7-alpine
+    container_name: app4every_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app4every_network
+
+networks:
+  app4every_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1450"
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
