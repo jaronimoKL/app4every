@@ -9,6 +9,11 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const loading = ref(false)
 
+  // initialized = true после первой попытки восстановить сессию.
+  // _initPromise обеспечивает что tryRestoreSession вызывается ровно один раз.
+  const initialized = ref(false)
+  let _initPromise = null
+
   // ── Геттеры ──
   const isAuthenticated = computed(() => !!accessToken.value)
 
@@ -26,10 +31,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email, password) {
+  async function login(identifier, password) {
     loading.value = true
     try {
-      const data = await authApi.login(email, password)
+      const data = await authApi.login(identifier, password)
       accessToken.value = data.access_token
       user.value = data.user
       return { success: true }
@@ -74,6 +79,21 @@ export const useAuthStore = defineStore('auth', () => {
     return ok
   }
 
+  /**
+   * ensureInitialized() — вызывается из router.beforeEach перед каждой навигацией.
+   * Гарантирует что сессия восстановлена из HttpOnly refresh-cookie ровно один раз.
+   * После первого вызова возвращается мгновенно.
+   */
+  async function ensureInitialized() {
+    if (initialized.value) return
+    if (!_initPromise) {
+      _initPromise = tryRestoreSession().finally(() => {
+        initialized.value = true
+      })
+    }
+    return _initPromise
+  }
+
   // Обновление профиля (username + email)
   async function updateProfile(username, email) {
     try {
@@ -102,8 +122,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     accessToken, user, loading,
-    isAuthenticated,
-    register, login, logout, refresh, tryRestoreSession,
+    isAuthenticated, initialized,
+    register, login, logout, refresh, tryRestoreSession, ensureInitialized,
     updateProfile, changePassword,
     clearAuth,
   }

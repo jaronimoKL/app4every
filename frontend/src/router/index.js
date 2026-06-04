@@ -57,8 +57,15 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+// beforeEach — асинхронный: сначала восстанавливаем сессию из cookie,
+// потом проверяем права доступа.
+// Первый вызов ensureInitialized() делает запрос к /auth/refresh,
+// все последующие возвращаются мгновенно (singleton promise).
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+
+  // Ждём восстановления сессии (один раз при первой навигации)
+  await auth.ensureInitialized()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login' }
