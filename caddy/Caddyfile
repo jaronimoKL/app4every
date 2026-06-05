@@ -1,16 +1,20 @@
 :80 {
+    # Рецензии → reviews-service:8082
+    handle /api/v1/reviews* {
+        reverse_proxy reviews-service:8082
+    }
+
     # Заметки → notebook-service:8081
-    # Важно: handle более специфичные пути ПЕРВЫМИ
     handle /api/v1/notes* {
         reverse_proxy notebook-service:8081
     }
 
-    # Все остальные /api/* → auth-service:8080
+    # Всё остальное /api/* → auth-service:8080
     handle /api/* {
         reverse_proxy auth-service:8080
     }
 
-    # Всё остальное → Vue dev server
+    # Фронтенд
     handle {
         reverse_proxy frontend:5173
     }

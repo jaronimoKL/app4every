@@ -37,7 +37,7 @@
           </div>
           <h1 class="welcome-title">
             Привет,
-            <span class="gradient-text">{{ auth.user?.email?.split('@')[0] }}</span>
+            <span class="gradient-text">{{ auth.user?.username || auth.user?.email?.split('@')[0] }}</span>
             👋
           </h1>
           <p style="color:var(--text-secondary);font-size:16px;max-width:480px;line-height:1.6;">
@@ -102,9 +102,9 @@ import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 
-// Первая буква email для аватара
+// Первая буква username или email для аватара
 const userInitial = computed(() =>
-  auth.user?.email?.charAt(0).toUpperCase() ?? '?'
+  (auth.user?.username || auth.user?.email)?.charAt(0).toUpperCase() ?? '?'
 )
 
 const modules = [
@@ -118,10 +118,11 @@ const modules = [
   },
   {
     icon: '⭐',
-    name: 'Отзывы и списки',
-    desc: 'Оценки фильмов, сериалов и еды. Совместные списки. Kotlin-приложение будет работать с тем же API.',
+    name: 'Рецензии',
+    desc: 'Список просмотренного: фильмы, аниме, сериалы. 4 статуса + оценки + ссылки на Kinopoisk, IMDB, Shikimori.',
     iconBg: 'rgba(245,158,11,0.15)',
-    tech: ['Go', 'REST', 'Kotlin'],
+    tech: ['Go', 'PostgreSQL'],
+    link: '/reviews',
   },
   {
     icon: '📹',

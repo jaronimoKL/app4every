@@ -14,6 +14,7 @@ services:
     depends_on:
       - auth-service
       - notebook-service
+      - reviews-service
       - frontend
     networks:
       - app4every_network
@@ -74,7 +75,33 @@ services:
     networks:
       - app4every_network
 
-  # 3. Vue.js Frontend (dev mode)
+  # 4. Go Backend (Reviews service — рецензии / список просмотренного)
+  reviews-service:
+    build:
+      context: ./services/reviews
+      dockerfile: Dockerfile
+      target: dev
+    container_name: app4every-reviews
+    restart: unless-stopped
+    volumes:
+      - ./services/reviews:/app
+      - /app/tmp
+    environment:
+      - PORT=8082
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=super_user
+      - DB_PASSWORD=super_secure_password
+      - DB_NAME=app4every_db
+      - DB_SSLMODE=disable
+      - JWT_SECRET=your-very-secure-local-jwt-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app4every_network
+
+  # 5. Vue.js Frontend (dev mode)
   frontend:
     build:
       context: ./frontend
