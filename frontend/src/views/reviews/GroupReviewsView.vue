@@ -235,6 +235,14 @@
                   <!-- Прогресс серий -->
                   <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold">
                     <span>🎬</span> Серия: {{ item.current_episode }} из {{ item.max_episodes }}
+                    <button 
+                      v-if="item.added_by === authStore.user?.id && item.current_episode < item.max_episodes" 
+                      class="btn-increment-ep"
+                      @click="incrementEpisode(item)"
+                      title="Просмотрена еще 1 серия"
+                    >
+                      ＋1
+                    </button>
                   </div>
 
                   <!-- Жанры -->
@@ -246,6 +254,21 @@
 
                   <!-- Заметки -->
                   <div class="card-notes mt-2" v-if="item.notes">{{ item.notes }}</div>
+
+                  <!-- Быстрая смена статуса (только для создателя) -->
+                  <div v-if="item.added_by === authStore.user?.id" class="quick-status-change flex items-center gap-1 mt-2.5">
+                    <span style="font-size:11px;color:var(--text-secondary);margin-right:4px;">Статус:</span>
+                    <button 
+                      v-for="opt in statusOptions" 
+                      :key="opt.value"
+                      class="quick-status-btn"
+                      :class="{ active: item.status === opt.value }"
+                      @click="changeItemStatus(item, opt.value)"
+                      :title="opt.label"
+                    >
+                      {{ opt.icon }}
+                    </button>
+                  </div>
 
                   <!-- Выставление оценки -->
                   <div class="item-personal-vote mt-3">
@@ -585,6 +608,13 @@ const contentTypes = [
   { value: 'series', icon: '📺', label: 'Сериал' },
 ]
 
+const statusOptions = [
+  { value: 'watching',  icon: '📺', label: 'Смотрю' },
+  { value: 'completed', icon: '✅', label: 'Просмотрено' },
+  { value: 'planned',   icon: '📋', label: 'Запланировано' },
+  { value: 'dropped',   icon: '⛔', label: 'Брошено' },
+]
+
 // ── Инициализация ──
 onMounted(async () => {
   await groupsStore.fetchGroups()
@@ -821,6 +851,49 @@ async function confirmDeleteItem() {
     await groupsStore.deleteGroupItem(activeGroup.value.id, itemToDelete.value.id)
     showDeleteConfirm.value = false
     itemToDelete.value = null
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function incrementEpisode(item) {
+  if (item.current_episode >= item.max_episodes) return
+  const newEpisode = item.current_episode + 1
+  
+  const payload = {
+    title:           item.title,
+    content_type:    item.content_type,
+    status:          newEpisode === item.max_episodes ? 'completed' : item.status,
+    current_episode: newEpisode,
+    max_episodes:    item.max_episodes,
+    poster_url:      item.poster_url,
+    genres:          item.genres || [],
+    notes:           item.notes
+  }
+  
+  try {
+    await groupsStore.updateGroupItem(activeGroup.value.id, item.id, payload)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function changeItemStatus(item, newStatus) {
+  if (item.status === newStatus) return
+  
+  const payload = {
+    title:           item.title,
+    content_type:    item.content_type,
+    status:          newStatus,
+    current_episode: newStatus === 'completed' ? item.max_episodes : item.current_episode,
+    max_episodes:    item.max_episodes,
+    poster_url:      item.poster_url,
+    genres:          item.genres || [],
+    notes:           item.notes
+  }
+  
+  try {
+    await groupsStore.updateGroupItem(activeGroup.value.id, item.id, payload)
   } catch (err) {
     console.error(err)
   }
@@ -1540,6 +1613,50 @@ function typeColor(type) {
   width: 100%; max-width: 380px; padding: 24px;
   border-radius: var(--radius-xl); text-align: center;
   border: 1px solid var(--border);
+}
+
+.btn-increment-ep {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.15s;
+}
+.btn-increment-ep:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.quick-status-change {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+.quick-status-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.quick-status-btn:hover {
+  background: rgba(255,255,255,0.08);
+}
+.quick-status-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--primary);
 }
 
 /* Адаптив */
