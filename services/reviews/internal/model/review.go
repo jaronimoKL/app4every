@@ -25,6 +25,13 @@ const (
 
 // ── Сущности ──
 
+// ReviewGenre — жанр рецензии.
+type ReviewGenre struct {
+	ID       int64  `json:"id"`
+	ReviewID int64  `json:"review_id"`
+	Name     string `json:"name"`
+}
+
 // ReviewLink — ссылка прикреплённая к рецензии пользователем.
 // label: "Kinopoisk", "IMDB", "Shikimori" и т.д.
 type ReviewLink struct {
@@ -46,6 +53,7 @@ type Review struct {
 	Notes       string       `json:"notes"`
 	PosterURL   string       `json:"poster_url"` // URL постера (необязателен)
 	Links       []ReviewLink `json:"links"`
+	Genres      []ReviewGenre `json:"genres"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
 }

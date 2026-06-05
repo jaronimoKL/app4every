@@ -17,10 +17,13 @@ import (
 )
 
 var (
-	ErrInvalidCredentials  = errors.New("invalid email or password")
-	ErrInvalidToken        = errors.New("invalid refresh token")
-	ErrWrongPassword       = errors.New("current password is incorrect")
-	ErrUserAlreadyExists   = errors.New("email or username already taken")
+	ErrInvalidCredentials       = errors.New("invalid email or password")
+	ErrInvalidToken              = errors.New("invalid refresh token")
+	ErrWrongPassword             = errors.New("current password is incorrect")
+	ErrUserAlreadyExists         = errors.New("email or username already taken")
+	ErrCannotFriendSelf          = errors.New("cannot friend yourself")
+	ErrFriendshipAlreadyExists   = errors.New("friendship already exists or pending")
+	ErrUserNotFound              = errors.New("user not found")
 )
 
 type AuthService interface {
@@ -36,6 +39,15 @@ type AuthService interface {
 	// Сброс пароля (заглушки — реальная отправка email будет позже)
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
+
+	// Дружба
+	GetFriends(ctx context.Context, userID int64) ([]*model.User, error)
+	GetRequests(ctx context.Context, userID int64) ([]*model.User, error)
+	SendRequest(ctx context.Context, userID int64, identifier string) error
+	AcceptRequest(ctx context.Context, userID, targetID int64) error
+	DeclineRequest(ctx context.Context, userID, targetID int64) error
+	DeleteFriend(ctx context.Context, userID, targetID int64) error
+	SearchUsers(ctx context.Context, q string, excludeID int64) ([]*model.User, error)
 }
 
 type authService struct {
@@ -210,4 +222,86 @@ func (s *authService) generateRefreshToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func (s *authService) GetFriends(ctx context.Context, userID int64) ([]*model.User, error) {
+	return s.userRepo.GetFriends(ctx, userID)
+}
+
+func (s *authService) GetRequests(ctx context.Context, userID int64) ([]*model.User, error) {
+	return s.userRepo.GetRequests(ctx, userID)
+}
+
+func (s *authService) SendRequest(ctx context.Context, userID int64, identifier string) error {
+	var targetUser *model.User
+	var err error
+
+	var idVal int64
+	if _, scanErr := fmt.Sscanf(identifier, "%d", &idVal); scanErr == nil {
+		targetUser, err = s.userRepo.GetByID(ctx, idVal)
+	} else {
+		targetUser, err = s.userRepo.GetByIdentifier(ctx, identifier)
+	}
+
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	if targetUser.ID == userID {
+		return ErrCannotFriendSelf
+	}
+
+	existing, err := s.userRepo.GetFriendship(ctx, userID, targetUser.ID)
+	if err != nil {
+		return err
+	}
+
+	if existing != nil {
+		switch existing.Status {
+		case "accepted":
+			return ErrFriendshipAlreadyExists
+		case "pending":
+			if existing.UserID == userID {
+				return ErrFriendshipAlreadyExists
+			}
+			return s.userRepo.UpdateFriendshipStatus(ctx, userID, targetUser.ID, "accepted")
+		case "declined":
+			return s.userRepo.UpdateFriendshipStatus(ctx, userID, targetUser.ID, "pending")
+		}
+	}
+
+	return s.userRepo.CreateFriendship(ctx, userID, targetUser.ID, "pending")
+}
+
+func (s *authService) AcceptRequest(ctx context.Context, userID, targetID int64) error {
+	existing, err := s.userRepo.GetFriendship(ctx, userID, targetID)
+	if err != nil {
+		return err
+	}
+	if existing == nil || existing.Status != "pending" || existing.FriendID != userID {
+		return errors.New("no pending request to accept")
+	}
+	return s.userRepo.UpdateFriendshipStatus(ctx, userID, targetID, "accepted")
+}
+
+func (s *authService) DeclineRequest(ctx context.Context, userID, targetID int64) error {
+	existing, err := s.userRepo.GetFriendship(ctx, userID, targetID)
+	if err != nil {
+		return err
+	}
+	if existing == nil || existing.Status != "pending" || existing.FriendID != userID {
+		return errors.New("no pending request to decline")
+	}
+	return s.userRepo.UpdateFriendshipStatus(ctx, userID, targetID, "declined")
+}
+
+func (s *authService) DeleteFriend(ctx context.Context, userID, targetID int64) error {
+	return s.userRepo.DeleteFriendship(ctx, userID, targetID)
+}
+
+func (s *authService) SearchUsers(ctx context.Context, q string, excludeID int64) ([]*model.User, error) {
+	return s.userRepo.SearchUsers(ctx, q, excludeID)
 }

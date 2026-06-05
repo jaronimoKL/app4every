@@ -50,6 +50,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/reviews/groups',
+    name: 'group-reviews',
+    component: () => import('@/views/reviews/GroupReviewsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),

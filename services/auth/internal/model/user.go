@@ -13,6 +13,14 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type Friendship struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	FriendID  int64     `json:"friend_id"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // --- Запросы Auth ---
 
 type RegisterRequest struct {

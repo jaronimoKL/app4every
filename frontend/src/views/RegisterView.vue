@@ -91,10 +91,7 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="email">
-                Email
-                <span style="color:var(--text-muted);font-weight:400;"> (необязательно)</span>
-              </label>
+              <label class="form-label" for="email">Email</label>
               <input
                 id="email"
                 v-model="email"
@@ -103,6 +100,7 @@
                 :class="{ error: fieldErrors.email }"
                 placeholder="you@example.com"
                 autocomplete="email"
+                required
               />
               <span v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email }}</span>
             </div>
@@ -159,7 +157,10 @@ function validate() {
     fieldErrors.username = 'Только латиница, цифры и подчёркивание'
     ok = false
   }
-  if (!email.value.includes('@')) {
+  if (!email.value) {
+    fieldErrors.email = 'Введите email'
+    ok = false
+  } else if (!email.value.includes('@')) {
     fieldErrors.email = 'Введите корректный email'
     ok = false
   }

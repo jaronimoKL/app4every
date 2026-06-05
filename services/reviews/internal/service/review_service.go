@@ -11,6 +11,7 @@ import (
 var (
 	ErrReviewNotFound = errors.New("review not found")
 	ErrLinkNotFound   = errors.New("link not found")
+	ErrGenreNotFound  = errors.New("genre not found")
 )
 
 type ReviewService interface {
@@ -21,6 +22,8 @@ type ReviewService interface {
 	DeleteReview(ctx context.Context, id, userID int64) error
 	AddLink(ctx context.Context, reviewID, userID int64, req model.AddLinkRequest) (*model.ReviewLink, error)
 	DeleteLink(ctx context.Context, linkID, reviewID, userID int64) error
+	AddGenre(ctx context.Context, reviewID, userID int64, name string) (*model.ReviewGenre, error)
+	DeleteGenre(ctx context.Context, genreID, reviewID, userID int64) error
 }
 
 type reviewService struct {
@@ -75,6 +78,22 @@ func (s *reviewService) DeleteLink(ctx context.Context, linkID, reviewID, userID
 	err := s.repo.DeleteLink(ctx, linkID, reviewID, userID)
 	if errors.Is(err, repository.ErrLinkNotFound) {
 		return ErrLinkNotFound
+	}
+	return err
+}
+
+func (s *reviewService) AddGenre(ctx context.Context, reviewID, userID int64, name string) (*model.ReviewGenre, error) {
+	genre, err := s.repo.AddGenre(ctx, reviewID, userID, name)
+	if errors.Is(err, repository.ErrReviewNotFound) {
+		return nil, ErrReviewNotFound
+	}
+	return genre, err
+}
+
+func (s *reviewService) DeleteGenre(ctx context.Context, genreID, reviewID, userID int64) error {
+	err := s.repo.DeleteGenre(ctx, genreID, reviewID, userID)
+	if errors.Is(err, repository.ErrGenreNotFound) {
+		return ErrGenreNotFound
 	}
 	return err
 }

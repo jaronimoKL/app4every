@@ -43,11 +43,13 @@ func userID(r *http.Request) int64 {
 // /api/v1/reviews/{id}
 // /api/v1/reviews/{id}/links
 // /api/v1/reviews/{id}/links/{linkId}
+// /api/v1/reviews/{id}/genres
+// /api/v1/reviews/{id}/genres/{genreId}
 type parsedPath struct {
 	reviewID int64
-	action   string // "" | "links"
-	linkID   int64  // задан только для links/{linkId}
-	hasLink  bool
+	action   string // "" | "links" | "genres"
+	subID    int64  // задан только для links/{linkId} или genres/{genreId}
+	hasSub   bool
 }
 
 func parsePath(rawPath string) (*parsedPath, error) {
@@ -64,14 +66,14 @@ func parsePath(rawPath string) (*parsedPath, error) {
 	}
 	res := &parsedPath{reviewID: reviewID}
 	if len(parts) >= 2 {
-		res.action = parts[1] // "links"
+		res.action = parts[1] // "links" или "genres"
 	}
 	if len(parts) >= 3 {
-		res.linkID, err = strconv.ParseInt(parts[2], 10, 64)
+		res.subID, err = strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid link id")
+			return nil, fmt.Errorf("invalid sub id")
 		}
-		res.hasLink = true
+		res.hasSub = true
 	}
 	return res, nil
 }
@@ -132,7 +134,7 @@ func (h *ReviewHandler) HandleReviewsByID(w http.ResponseWriter, r *http.Request
 	// ── /api/v1/reviews/{id}/links ──
 	if pp.action == "links" {
 		switch {
-		case r.Method == http.MethodPost && !pp.hasLink:
+		case r.Method == http.MethodPost && !pp.hasSub:
 			var req model.AddLinkRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
@@ -153,10 +155,53 @@ func (h *ReviewHandler) HandleReviewsByID(w http.ResponseWriter, r *http.Request
 			}
 			writeJSON(w, http.StatusCreated, link)
 
-		case r.Method == http.MethodDelete && pp.hasLink:
-			if err := h.svc.DeleteLink(r.Context(), pp.linkID, pp.reviewID, uid); err != nil {
+		case r.Method == http.MethodDelete && pp.hasSub:
+			if err := h.svc.DeleteLink(r.Context(), pp.subID, pp.reviewID, uid); err != nil {
 				if errors.Is(err, service.ErrLinkNotFound) {
 					writeError(w, http.StatusNotFound, "not_found", "link not found")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		}
+		return
+	}
+
+	// ── /api/v1/reviews/{id}/genres ──
+	if pp.action == "genres" {
+		switch {
+		case r.Method == http.MethodPost && !pp.hasSub:
+			var req struct {
+				Name string `json:"name"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+				return
+			}
+			if req.Name == "" {
+				writeError(w, http.StatusBadRequest, "bad_request", "name is required")
+				return
+			}
+			genre, err := h.svc.AddGenre(r.Context(), pp.reviewID, uid, req.Name)
+			if err != nil {
+				if errors.Is(err, service.ErrReviewNotFound) {
+					writeError(w, http.StatusNotFound, "not_found", "review not found")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+				return
+			}
+			writeJSON(w, http.StatusCreated, genre)
+
+		case r.Method == http.MethodDelete && pp.hasSub:
+			if err := h.svc.DeleteGenre(r.Context(), pp.subID, pp.reviewID, uid); err != nil {
+				if errors.Is(err, service.ErrGenreNotFound) {
+					writeError(w, http.StatusNotFound, "not_found", "genre not found")
 					return
 				}
 				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())

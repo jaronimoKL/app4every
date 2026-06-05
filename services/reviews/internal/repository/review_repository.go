@@ -12,6 +12,7 @@ import (
 
 var ErrReviewNotFound = errors.New("review not found")
 var ErrLinkNotFound = errors.New("link not found")
+var ErrGenreNotFound = errors.New("genre not found")
 
 type ReviewRepository interface {
 	// Рецензии
@@ -24,6 +25,10 @@ type ReviewRepository interface {
 	AddLink(ctx context.Context, reviewID, userID int64, req model.AddLinkRequest) (*model.ReviewLink, error)
 	DeleteLink(ctx context.Context, linkID, reviewID, userID int64) error
 	GetLinks(ctx context.Context, reviewID int64) ([]model.ReviewLink, error)
+	// Жанры
+	AddGenre(ctx context.Context, reviewID, userID int64, name string) (*model.ReviewGenre, error)
+	DeleteGenre(ctx context.Context, genreID, reviewID, userID int64) error
+	GetGenres(ctx context.Context, reviewID int64) ([]model.ReviewGenre, error)
 }
 
 type postgresReviewRepository struct {
@@ -51,6 +56,7 @@ func (r *postgresReviewRepository) Create(ctx context.Context, userID int64, req
 	}
 	review.Rating = rating
 	review.Links = []model.ReviewLink{}
+	review.Genres = []model.ReviewGenre{}
 	return review, nil
 }
 
@@ -70,7 +76,7 @@ func (r *postgresReviewRepository) GetAllByUserID(ctx context.Context, userID in
 	var ids []int64
 
 	for rows.Next() {
-		rev := &model.Review{Links: []model.ReviewLink{}}
+		rev := &model.Review{Links: []model.ReviewLink{}, Genres: []model.ReviewGenre{}}
 		var rating *int16
 		if err := rows.Scan(&rev.ID, &rev.UserID, &rev.Title, &rev.ContentType, &rev.Status,
 			&rating, &rev.Notes, &rev.PosterURL, &rev.CreatedAt, &rev.UpdatedAt); err != nil {
@@ -106,6 +112,27 @@ func (r *postgresReviewRepository) GetAllByUserID(ctx context.Context, userID in
 		}
 	}
 
+	// Загружаем все жанры одним запросом
+	genreRows, err := r.db.Query(ctx, `
+		SELECT id, review_id, name
+		FROM review_genres WHERE review_id = ANY($1)
+		ORDER BY id ASC
+	`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer genreRows.Close()
+
+	for genreRows.Next() {
+		genre := model.ReviewGenre{}
+		if err := genreRows.Scan(&genre.ID, &genre.ReviewID, &genre.Name); err != nil {
+			return nil, err
+		}
+		if rev, ok := reviewMap[genre.ReviewID]; ok {
+			rev.Genres = append(rev.Genres, genre)
+		}
+	}
+
 	// Возвращаем в порядке updated_at DESC (порядок ids)
 	result := make([]*model.Review, 0, len(ids))
 	for _, id := range ids {
@@ -135,6 +162,13 @@ func (r *postgresReviewRepository) GetByID(ctx context.Context, id, userID int64
 		return nil, err
 	}
 	review.Links = links
+
+	genres, err := r.GetGenres(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	review.Genres = genres
+
 	return review, nil
 }
 
@@ -161,6 +195,13 @@ func (r *postgresReviewRepository) Update(ctx context.Context, id, userID int64,
 		return nil, err
 	}
 	review.Links = links
+
+	genres, err := r.GetGenres(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	review.Genres = genres
+
 	return review, nil
 }
 
@@ -231,3 +272,60 @@ func (r *postgresReviewRepository) GetLinks(ctx context.Context, reviewID int64)
 	}
 	return links, nil
 }
+
+func (r *postgresReviewRepository) AddGenre(ctx context.Context, reviewID, userID int64, name string) (*model.ReviewGenre, error) {
+	// Проверяем что рецензия принадлежит пользователю
+	var exists bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reviews WHERE id=$1 AND user_id=$2)`, reviewID, userID).Scan(&exists)
+	if err != nil || !exists {
+		return nil, ErrReviewNotFound
+	}
+
+	genre := &model.ReviewGenre{}
+	err = r.db.QueryRow(ctx, `
+		INSERT INTO review_genres (review_id, name) VALUES ($1, $2)
+		RETURNING id, review_id, name
+	`, reviewID, name).Scan(&genre.ID, &genre.ReviewID, &genre.Name)
+	return genre, err
+}
+
+func (r *postgresReviewRepository) DeleteGenre(ctx context.Context, genreID, reviewID, userID int64) error {
+	// JOIN через reviews чтобы проверить владельца
+	res, err := r.db.Exec(ctx, `
+		DELETE FROM review_genres rg
+		USING reviews rv
+		WHERE rg.id=$1 AND rg.review_id=$2 AND rv.id=$2 AND rv.user_id=$3
+	`, genreID, reviewID, userID)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return ErrGenreNotFound
+	}
+	return nil
+}
+
+func (r *postgresReviewRepository) GetGenres(ctx context.Context, reviewID int64) ([]model.ReviewGenre, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, review_id, name FROM review_genres
+		WHERE review_id=$1 ORDER BY id ASC
+	`, reviewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var genres []model.ReviewGenre
+	for rows.Next() {
+		var g model.ReviewGenre
+		if err := rows.Scan(&g.ID, &g.ReviewID, &g.Name); err != nil {
+			return nil, err
+		}
+		genres = append(genres, g)
+	}
+	if genres == nil {
+		genres = []model.ReviewGenre{}
+	}
+	return genres, nil
+}
+

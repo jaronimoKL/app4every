@@ -85,6 +85,14 @@ func Run() error {
 	// POST /api/v1/users/password — смена пароля
 	protectedMux.HandleFunc("/api/v1/users/password", authHandler.ChangePassword)
 
+	// Друзья и поиск
+	protectedMux.HandleFunc("/api/v1/users/friends", authHandler.HandleFriends)
+	protectedMux.HandleFunc("/api/v1/users/friends/", authHandler.HandleFriends) // trailing slash matches DELETE and /requests
+	protectedMux.HandleFunc("/api/v1/users/friends/request", authHandler.FriendRequest)
+	protectedMux.HandleFunc("/api/v1/users/friends/accept", authHandler.AcceptFriend)
+	protectedMux.HandleFunc("/api/v1/users/friends/decline", authHandler.DeclineFriend)
+	protectedMux.HandleFunc("/api/v1/users/search", authHandler.SearchUsers)
+
 	// Регистрируем защищённые префиксы в основном мультиплексоре
 	mux.Handle("/api/v1/auth/me", authMiddleware(protectedMux))
 	mux.Handle("/api/v1/users/", authMiddleware(protectedMux)) // /users/ — суффикс "/" = префикс-матчинг

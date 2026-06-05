@@ -80,6 +80,21 @@ export const useReviewsStore = defineStore('reviews', () => {
     if (rev) rev.links = rev.links.filter(l => l.id !== linkId)
   }
 
+  // ── Жанры ──
+
+  async function addGenre(reviewId, name) {
+    const genre = await api('POST', `/reviews/${reviewId}/genres`, { name }, token())
+    const rev = reviews.value.find(r => r.id === reviewId)
+    if (rev) rev.genres = [...(rev.genres || []), genre]
+    return genre
+  }
+
+  async function deleteGenre(reviewId, genreId) {
+    await api('DELETE', `/reviews/${reviewId}/genres/${genreId}`, null, token())
+    const rev = reviews.value.find(r => r.id === reviewId)
+    if (rev) rev.genres = rev.genres.filter(g => g.id !== genreId)
+  }
+
   // ── Computed: группировка по статусам ──
 
   const byStatus = computed(() => ({
@@ -93,5 +108,6 @@ export const useReviewsStore = defineStore('reviews', () => {
     reviews, loading, saving, byStatus,
     fetchReviews, createReview, updateReview, deleteReview,
     addLink, deleteLink,
+    addGenre, deleteGenre,
   }
 })

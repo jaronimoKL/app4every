@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"app4every/services/auth/internal/model"
@@ -46,11 +48,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
 		return
 	}
-	if req.Username == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "username and password are required")
+	if req.Username == "" || req.Password == "" || req.Email == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "username, email and password are required")
 		return
 	}
-	// email — необязателен
 
 	user, err := h.authService.Register(r.Context(), req)
 	if err != nil {
@@ -275,4 +276,147 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password reset successfully."})
+}
+
+func (h *AuthHandler) HandleFriends(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	// DELETE /api/v1/users/friends/{id}
+	if r.Method == http.MethodDelete {
+		p := strings.TrimPrefix(r.URL.Path, "/api/v1/users/friends/")
+		targetID, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid user ID")
+			return
+		}
+		if err := h.authService.DeleteFriend(r.Context(), userID, targetID); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	// GET /api/v1/users/friends/requests
+	if strings.HasSuffix(r.URL.Path, "/requests") {
+		reqs, err := h.authService.GetRequests(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, reqs)
+		return
+	}
+
+	// GET /api/v1/users/friends
+	friends, err := h.authService.GetFriends(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, friends)
+}
+
+func (h *AuthHandler) FriendRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	var req struct {
+		Identifier string `json:"identifier"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+	if req.Identifier == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "identifier is required")
+		return
+	}
+
+	if err := h.authService.SendRequest(r.Context(), userID, req.Identifier); err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "user not found")
+			return
+		}
+		if errors.Is(err, service.ErrCannotFriendSelf) {
+			writeError(w, http.StatusBadRequest, "bad_request", "cannot friend yourself")
+			return
+		}
+		if errors.Is(err, service.ErrFriendshipAlreadyExists) {
+			writeError(w, http.StatusConflict, "conflict", "friendship already exists or pending")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "request processed successfully"})
+}
+
+func (h *AuthHandler) AcceptFriend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	var req struct {
+		UserID int64 `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+
+	if err := h.authService.AcceptRequest(r.Context(), userID, req.UserID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "request accepted"})
+}
+
+func (h *AuthHandler) DeclineFriend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	var req struct {
+		UserID int64 `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON")
+		return
+	}
+
+	if err := h.authService.DeclineRequest(r.Context(), userID, req.UserID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "request declined"})
+}
+
+func (h *AuthHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+	q := r.URL.Query().Get("q")
+
+	users, err := h.authService.SearchUsers(r.Context(), q, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, users)
 }

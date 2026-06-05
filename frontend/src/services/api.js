@@ -54,3 +54,27 @@ export const userApi = {
   changePassword: (currentPassword, newPassword, token) =>
     request('POST', '/users/password', { current_password: currentPassword, new_password: newPassword }, token),
 }
+
+// ── Friends ──
+export const friendsApi = {
+  getFriends: (token) =>
+    request('GET', '/users/friends', null, token),
+
+  getRequests: (token) =>
+    request('GET', '/users/friends/requests', null, token),
+
+  sendRequest: (identifier, token) =>
+    request('POST', '/users/friends/request', { identifier }, token),
+
+  acceptRequest: (userId, token) =>
+    request('POST', '/users/friends/accept', { user_id: userId }, token),
+
+  declineRequest: (userId, token) =>
+    request('POST', '/users/friends/decline', { user_id: userId }, token),
+
+  deleteFriend: (id, token) =>
+    request('DELETE', `/users/friends/${id}`, null, token),
+
+  searchUsers: (q, token) =>
+    request('GET', `/users/search?q=${encodeURIComponent(q)}`, null, token),
+}

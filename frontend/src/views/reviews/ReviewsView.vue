@@ -8,7 +8,15 @@
           <RouterLink to="/dashboard" class="btn btn-ghost" style="padding:7px 12px;font-size:13px;">← Назад</RouterLink>
           <div class="nav-sep"></div>
           <span style="font-size:18px;">⭐</span>
-          <span style="font-weight:700;font-size:15px;">Рецензии</span>
+          <span style="font-weight:700;font-size:15px;margin-right:8px;">Рецензии</span>
+          <div class="nav-sep"></div>
+          <RouterLink to="/reviews" class="nav-link-toggle active">Личные</RouterLink>
+          <RouterLink to="/reviews/groups" class="nav-link-toggle flex items-center gap-1.5">
+            Групповые
+            <span v-if="groupsStore.invites.length > 0" class="badge-invites-count">
+              {{ groupsStore.invites.length }}
+            </span>
+          </RouterLink>
         </div>
         <button class="add-btn" @click="openCreate">
           <span>＋</span> Добавить
@@ -33,6 +41,60 @@
       </button>
     </div>
 
+    <!-- ══ ПАНЕЛЬ ПОИСКА И ФИЛЬТРОВ ══ -->
+    <div class="filter-panel glass">
+      <div class="filter-row flex flex-wrap gap-4 items-center">
+        <!-- Поиск -->
+        <div class="filter-search flex-1 min-w-[200px]">
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="form-input"
+            placeholder="Поиск по названию..."
+            style="padding: 8px 12px; font-size: 13px;"
+          />
+        </div>
+        
+        <!-- Тип контента (radio) -->
+        <div class="filter-types flex items-center gap-4">
+          <label class="radio-label">
+            <input type="radio" v-model="selectedContentType" value="all" />
+            <span>Все</span>
+          </label>
+          <label class="radio-label" v-for="t in contentTypes" :key="t.value">
+            <input type="radio" v-model="selectedContentType" :value="t.value" />
+            <span>{{ t.icon }} {{ t.label }}</span>
+          </label>
+        </div>
+
+        <!-- Кнопка сброса -->
+        <button
+          v-if="isAnyFilterActive"
+          @click="resetFilters"
+          class="btn btn-ghost reset-filters-btn"
+          style="padding: 7px 12px; font-size: 12px;"
+        >
+          Сбросить фильтры
+        </button>
+      </div>
+
+      <!-- Фильтр по жанрам (мультиселект-теги) -->
+      <div class="filter-genres-row mt-3" v-if="availableGenres.length > 0">
+        <span style="font-size:12px; color:var(--text-secondary); margin-right:8px;">Жанры:</span>
+        <div class="filter-genres flex flex-wrap gap-1 inline-flex">
+          <button
+            v-for="genreName in availableGenres"
+            :key="genreName"
+            class="filter-genre-btn"
+            :class="{ active: selectedGenres.has(genreName) }"
+            @click="toggleFilterGenre(genreName)"
+          >
+            {{ genreName }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ ОСНОВНОЙ КОНТЕНТ ══ -->
     <div class="rv-body">
 
@@ -43,10 +105,18 @@
 
       <!-- Пустой список -->
       <div v-else-if="currentReviews.length === 0" class="empty-state">
-        <div style="font-size:52px;margin-bottom:16px;">{{ currentTab.icon }}</div>
-        <h3 style="font-weight:700;font-size:17px;margin-bottom:8px;">{{ currentTab.emptyTitle }}</h3>
-        <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">{{ currentTab.emptyDesc }}</p>
-        <button class="btn btn-primary" style="padding:10px 24px;" @click="openCreate">Добавить</button>
+        <template v-if="isAnyFilterActive">
+          <div style="font-size:52px;margin-bottom:16px;">🔍</div>
+          <h3 style="font-weight:700;font-size:17px;margin-bottom:8px;">Ничего не найдено</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">Попробуйте изменить параметры поиска или сбросить фильтры</p>
+          <button class="btn btn-primary" style="padding:10px 24px;" @click="resetFilters">Сбросить фильтры</button>
+        </template>
+        <template v-else>
+          <div style="font-size:52px;margin-bottom:16px;">{{ currentTab.icon }}</div>
+          <h3 style="font-weight:700;font-size:17px;margin-bottom:8px;">{{ currentTab.emptyTitle }}</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">{{ currentTab.emptyDesc }}</p>
+          <button class="btn btn-primary" style="padding:10px 24px;" @click="openCreate">Добавить</button>
+        </template>
       </div>
 
       <!-- Сетка карточек -->
@@ -75,6 +145,14 @@
           <!-- Информация под постером -->
           <div class="card-info">
             <div class="card-title">{{ rev.title }}</div>
+            
+            <!-- Теги жанров на карточке -->
+            <div class="card-genres flex flex-wrap gap-1 mb-2" v-if="rev.genres && rev.genres.length > 0">
+              <span v-for="g in rev.genres" :key="g.id" class="card-genre-pill">
+                {{ g.name }}
+              </span>
+            </div>
+
             <div class="card-notes" v-if="rev.notes">{{ rev.notes }}</div>
             <!-- Ссылки -->
             <div class="card-links" v-if="rev.links && rev.links.length > 0" @click.stop>
@@ -175,6 +253,45 @@
             <textarea v-model="form.notes" class="form-textarea" rows="2" placeholder="Впечатления, мысли..."></textarea>
           </div>
 
+          <!-- Жанры -->
+          <div class="form-group">
+            <label class="form-label">Жанры</label>
+
+            <!-- Текущие жанры -->
+            <div class="genres-list flex flex-wrap gap-2 mb-1" v-if="form.genres && form.genres.length > 0">
+              <span v-for="g in form.genres" :key="g.name" class="genre-pill">
+                {{ g.name }}
+                <button type="button" class="genre-del-btn" @click="removeGenre(g)">×</button>
+              </span>
+            </div>
+
+            <!-- Быстрые жанры -->
+            <div class="quick-genres flex flex-wrap gap-1 mb-2">
+              <button
+                v-for="gName in availableQuickGenres"
+                :key="gName"
+                type="button"
+                class="quick-genre-btn"
+                :class="{ active: form.genres.some(g => g.name.toLowerCase() === gName.toLowerCase()) }"
+                @click="toggleQuickGenre(gName)"
+              >
+                {{ gName }}
+              </button>
+            </div>
+
+            <!-- Свой жанр -->
+            <div class="flex gap-2">
+              <input
+                v-model="newGenreName"
+                type="text"
+                class="form-input"
+                placeholder="Свой жанр..."
+                @keydown.enter.prevent="addGenre(newGenreName)"
+              />
+              <button type="button" class="btn btn-ghost" style="padding: 9px 16px;" @click="addGenre(newGenreName)">＋</button>
+            </div>
+          </div>
+
           <!-- ── Ссылки ── -->
           <div class="form-group">
             <label class="form-label">Ссылки</label>
@@ -240,13 +357,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useReviewsStore } from '@/stores/reviews'
+import { useGroupsStore } from '@/stores/groups'
 
 const store = useReviewsStore()
+const groupsStore = useGroupsStore()
 
 // ── Инициализация ──
-onMounted(async () => { await store.fetchReviews() })
+onMounted(async () => {
+  await store.fetchReviews()
+  await groupsStore.fetchInvites()
+})
 
 // ── Конфигурация ──
 
@@ -298,11 +420,79 @@ const statusOptions = [
   { value: 'dropped',   icon: '⛔', label: 'Брошено',      color: '#ef4444' },
 ]
 
+// ── Поиск и фильтры ──
+
+const searchQuery = ref('')
+const selectedGenres = ref(new Set())
+const selectedContentType = ref('all')
+
+const isAnyFilterActive = computed(() => {
+  return searchQuery.value.trim() !== '' ||
+         selectedContentType.value !== 'all' ||
+         selectedGenres.value.size > 0
+})
+
+function resetFilters() {
+  searchQuery.value = ''
+  selectedContentType.value = 'all'
+  selectedGenres.value.clear()
+}
+
+function toggleFilterGenre(genreName) {
+  if (selectedGenres.value.has(genreName)) {
+    selectedGenres.value.delete(genreName)
+  } else {
+    selectedGenres.value.add(genreName)
+  }
+}
+
+const availableGenres = computed(() => {
+  const list = store.byStatus[activeTab.value] || []
+  const genresSet = new Set()
+  for (const r of list) {
+    if (r.genres) {
+      for (const g of r.genres) {
+        genresSet.add(g.name)
+      }
+    }
+  }
+  return Array.from(genresSet).sort()
+})
+
 // ── Табы ──
 
 const activeTab    = ref('watching')
 const currentTab   = computed(() => tabs.find(t => t.key === activeTab.value))
-const currentReviews = computed(() => store.byStatus[activeTab.value] || [])
+
+const currentReviews = computed(() => {
+  let list = store.byStatus[activeTab.value] || []
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter(r => r.title.toLowerCase().includes(q))
+  }
+
+  if (selectedContentType.value && selectedContentType.value !== 'all') {
+    list = list.filter(r => r.content_type === selectedContentType.value)
+  }
+
+  if (selectedGenres.value.size > 0) {
+    list = list.filter(r => {
+      const reviewGenreNames = new Set((r.genres || []).map(g => g.name.toLowerCase()))
+      return Array.from(selectedGenres.value).every(gName => reviewGenreNames.has(gName.toLowerCase()))
+    })
+  }
+
+  return list
+})
+watch(activeTab, () => {
+  const av = new Set(availableGenres.value.map(g => g.toLowerCase()))
+  for (const g of Array.from(selectedGenres.value)) {
+    if (!av.has(g.toLowerCase())) {
+      selectedGenres.value.delete(g)
+    }
+  }
+})
 
 // ── Модал ──
 
@@ -312,6 +502,17 @@ const isEditing       = ref(false)
 const editingReview   = ref(null)
 const posterLoadError = ref(false)
 const newLinks        = ref([])  // новые ссылки для добавления
+const newGenreName    = ref('')  // имя нового жанра в инпуте
+
+const defaultGenres = {
+  movie: ['Боевик', 'Комедия', 'Драма', 'Триллер', 'Ужасы', 'Фантастика', 'Фэнтези', 'Мелодрама', 'Криминал', 'Приключения', 'Аниме-фильм', 'Документальный'],
+  series: ['Боевик', 'Комедия', 'Драма', 'Триллер', 'Ужасы', 'Фантастика', 'Фэнтези', 'Мелодрама', 'Криминал', 'Приключения', 'Аниме-фильм', 'Документальный'],
+  anime: ['Сёнэн', 'Сёдзё', 'Сэйнэн', 'Меха', 'Исекай', 'Романтика', 'Этти', 'Слайс-оф-лайф', 'Спокон', 'Психологическое', 'Ужасы', 'Фэнтези']
+}
+
+const availableQuickGenres = computed(() => {
+  return defaultGenres[form.content_type] || defaultGenres.movie
+})
 
 const form = reactive({
   title:        '',
@@ -320,6 +521,7 @@ const form = reactive({
   rating:       null,
   notes:        '',
   poster_url:   '',
+  genres:       [],
 })
 
 function resetForm() {
@@ -330,7 +532,9 @@ function resetForm() {
   form.rating       = null
   form.notes        = ''
   form.poster_url   = ''
+  form.genres       = []
   newLinks.value    = []
+  newGenreName.value = ''
   posterLoadError.value = false
 }
 
@@ -351,7 +555,9 @@ function openEdit(rev) {
   form.rating         = rev.rating ?? null
   form.notes          = rev.notes
   form.poster_url     = rev.poster_url
+  form.genres         = rev.genres ? [...rev.genres] : []
   newLinks.value      = []
+  newGenreName.value = ''
   posterLoadError.value = false
   showModal.value = true
 }
@@ -360,6 +566,40 @@ function closeModal() {
   showModal.value = false
   isEditing.value = false
   editingReview.value = null
+}
+
+// ── Жанры в Модале ──
+
+async function addGenre(name) {
+  name = name.trim()
+  if (!name) return
+  if (form.genres.some(g => g.name.toLowerCase() === name.toLowerCase())) {
+    newGenreName.value = ''
+    return
+  }
+  if (isEditing.value) {
+    const genre = await store.addGenre(editingReview.value.id, name)
+    form.genres.push(genre)
+  } else {
+    form.genres.push({ name })
+  }
+  newGenreName.value = ''
+}
+
+async function removeGenre(genre) {
+  if (isEditing.value && genre.id) {
+    await store.deleteGenre(editingReview.value.id, genre.id)
+  }
+  form.genres = form.genres.filter(g => g.name.toLowerCase() !== genre.name.toLowerCase())
+}
+
+async function toggleQuickGenre(gName) {
+  const existing = form.genres.find(g => g.name.toLowerCase() === gName.toLowerCase())
+  if (existing) {
+    await removeGenre(existing)
+  } else {
+    await addGenre(gName)
+  }
 }
 
 // ── Сохранение ──
@@ -387,6 +627,13 @@ async function handleSave() {
   for (const nl of newLinks.value) {
     if (nl.url.trim()) {
       await store.addLink(savedReview.id, nl.label.trim(), nl.url.trim())
+    }
+  }
+
+  // Добавляем новые жанры если есть (для создания)
+  if (!isEditing.value) {
+    for (const g of form.genres) {
+      await store.addGenre(savedReview.id, g.name)
     }
   }
 
@@ -734,10 +981,136 @@ function truncUrl(url) {
 }
 .add-link-btn:hover { border-color: var(--primary); color: #a5b4fc; background: rgba(99,102,241,0.05); }
 
-/* Диалог удаления */
-.confirm-box {
-  border-radius: var(--radius-xl); padding: 28px 32px;
-  max-width: 380px; width: 100%; text-align: center;
+/* Фильтры и поиск */
+.filter-panel {
+  margin: 12px 24px 0 24px;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.radio-label input {
+  accent-color: var(--primary);
+}
+.filter-genre-btn {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-genre-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+.filter-genre-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--primary);
+  color: white;
+}
+.reset-filters-btn {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.2);
+}
+.reset-filters-btn:hover {
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+}
+
+/* Жанры на карточке */
+.card-genre-pill {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+/* Жанры в модале */
+.genre-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+.genre-del-btn {
+  background: transparent;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+.genre-del-btn:hover {
+  color: #ef4444;
+}
+.quick-genre-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.quick-genre-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+.quick-genre-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--primary);
+  color: white;
+}
+
+.nav-link-toggle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+.nav-link-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+.nav-link-toggle.active {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.08);
+  font-weight: 600;
+}
+.badge-invites-count {
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ══ Адаптив ══ */

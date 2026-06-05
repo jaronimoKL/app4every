@@ -50,13 +50,31 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to add username column: %w", err)
 	}
 
-	// Делаем email необязательным — пользователи могут регистрироваться только с логином.
-	// PostgreSQL разрешает несколько NULL в UNIQUE-колонке.
-	_, err = pool.Exec(ctx, `ALTER TABLE users ALTER COLUMN email DROP NOT NULL;`)
+	// Очищаем пустые/null email и делаем email обязательным (NOT NULL)
+	_, _ = pool.Exec(ctx, `UPDATE users SET email = 'user_' || id || '@example.com' WHERE email IS NULL OR email = '';`)
+	_, err = pool.Exec(ctx, `ALTER TABLE users ALTER COLUMN email SET NOT NULL;`)
 	if err != nil {
-		// Игнорируем ошибку если колонка уже nullable
 		_ = err
 	}
+
+	// Таблица связей дружбы
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS friendships (
+			id         BIGSERIAL PRIMARY KEY,
+			user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			friend_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status     VARCHAR(20) NOT NULL DEFAULT 'pending',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+			UNIQUE(user_id, friend_id)
+		);
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to migrate friendships table: %w", err)
+	}
+
+	// Индексы для friendships
+	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);`)
+	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id);`)
 
 	return pool, nil
 }
