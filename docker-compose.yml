@@ -5,8 +5,8 @@ services:
     container_name: app4every-caddy
     restart: unless-stopped
     ports:
-      - "0.0.0.0:80:80"
-      - "0.0.0.0:443:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./caddy/certs:/etc/caddy/certs
