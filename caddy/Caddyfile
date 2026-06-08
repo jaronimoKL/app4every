@@ -1,23 +1,31 @@
-:80 {
-    # Рецензии и группы → reviews-service:8082
-    handle /api/v1/reviews* {
+jaronimoww.run.place {
+    
+    tls /etc/caddy/certs/jaronimoww.run.place.crt /etc/caddy/certs/jaronimoww.run.place.key
+
+    # 1. Рецензии и группы → reviews-service:8082
+    handle /api/v1/reviews/* {
         reverse_proxy reviews-service:8082
     }
-    handle /api/v1/groups* {
+    handle /api/v1/groups/* {
         reverse_proxy reviews-service:8082
     }
 
-    # Заметки → notebook-service:8081
-    handle /api/v1/notes* {
+    # 2. Видеочат и шеринг экрана → screenshare-service:8083
+    handle /api/v1/screenshare/* {
+        reverse_proxy screenshare-service:8083
+    }
+
+    # 3. Заметки → notebook-service:8081
+    handle /api/v1/notes/* {
         reverse_proxy notebook-service:8081
     }
 
-    # Всё остальное /api/* → auth-service:8080
+    # 4. Всё остальное /api/* (Авторизация и профили) → auth-service:8080
     handle /api/* {
         reverse_proxy auth-service:8080
     }
 
-    # Фронтенд
+    # 5. Фронтенд (Vite dev-server) → frontend:5173
     handle {
         reverse_proxy frontend:5173
     }

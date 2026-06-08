@@ -5,16 +5,18 @@ services:
     container_name: app4every-caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/certs:/etc/caddy/certs
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - auth-service
       - notebook-service
       - reviews-service
+      - screenshare-service
       - frontend
     networks:
       - app4every_network
@@ -32,6 +34,7 @@ services:
       - /app/tmp
     environment:
       - APP_ENV=local
+      - PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=super_user
@@ -101,6 +104,32 @@ services:
     networks:
       - app4every_network
 
+  # 4b. Go Backend (Screensharing and Videochat service)
+  screenshare-service:
+    build:
+      context: ./services/screenshare
+      dockerfile: Dockerfile
+      target: dev
+    container_name: app4every-screenshare
+    restart: unless-stopped
+    volumes:
+      - ./services/screenshare:/app
+      - /app/tmp
+    environment:
+      - PORT=8083
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=super_user
+      - DB_PASSWORD=super_secure_password
+      - DB_NAME=app4every_db
+      - DB_SSLMODE=disable
+      - JWT_SECRET=your-very-secure-local-jwt-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app4every_network
+
   # 5. Vue.js Frontend (dev mode)
   frontend:
     build:
@@ -126,7 +155,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U super_user -d app4every_db" ]
       interval: 5s
@@ -153,8 +182,6 @@ services:
 networks:
   app4every_network:
     driver: bridge
-    driver_opts:
-      com.docker.network.driver.mtu: "1450"
 
 volumes:
   postgres_data:

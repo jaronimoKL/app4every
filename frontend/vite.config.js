@@ -11,6 +11,7 @@ export default defineConfig({
     }
   },
   server: {
+    allowedHosts: ['jaronimoww.run.place'],
     port: 5173,
     strictPort: true,
   }

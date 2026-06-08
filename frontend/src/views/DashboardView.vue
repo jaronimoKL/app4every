@@ -130,6 +130,7 @@ const modules = [
     desc: 'P2P видеозвонки и демонстрация экрана на базе WebRTC. Go выступает только сигнальным сервером.',
     iconBg: 'rgba(6,182,212,0.15)',
     tech: ['Go', 'WebRTC', 'WebSocket'],
+    link: '/screenshare',
   },
 ]
 

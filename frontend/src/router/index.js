@@ -61,6 +61,18 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/screenshare',
+    name: 'screenshare',
+    component: () => import('@/views/screenshare/ScreenshareView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/screenshare/room/:roomId',
+    name: 'screenshare-room',
+    component: () => import('@/views/screenshare/RoomView.vue'),
+    meta: { requiresAuth: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
