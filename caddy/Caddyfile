@@ -1,6 +1,6 @@
-jaronimoww.run.place {
-    
-    tls /etc/caddy/certs/jaronimoww.run.place.crt /etc/caddy/certs/jaronimoww.run.place.key
+
+jaronimo.ru {
+
 
     # 1. Рецензии и группы → reviews-service:8082
     handle /api/v1/reviews/* {

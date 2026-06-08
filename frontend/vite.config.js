@@ -11,8 +11,13 @@ export default defineConfig({
     }
   },
   server: {
-    allowedHosts: ['jaronimoww.run.place'],
+    host: '0.0.0.0',
+    allowedHosts: ['jaronimo.ru'],
     port: 5173,
-    strictPort: true,
+    hmr: {
+      // для WebSocket HMR через Caddy
+      clientPort: 443,
+      protocol: 'wss'
+    }
   }
 })
