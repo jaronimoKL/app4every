@@ -1,6 +1,9 @@
 
 jaronimo.ru {
-
+    log {
+        output stdout
+    }
+    tls internal
 
     # 1. Рецензии и группы → reviews-service:8082
     handle /api/v1/reviews/* {
