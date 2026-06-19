@@ -1,34 +1,54 @@
+# ══════════════════════════════════════════════════════════════
+#  Caddy — Production конфиг для jaronimo.work.gd
+#  Let's Encrypt выдаёт и обновляет сертификат автоматически.
+#  Caddy сам делает HTTP → HTTPS редирект.
+# ══════════════════════════════════════════════════════════════
 
-jaronimo.ru {
+jaronimo.work.gd {
     log {
         output stdout
+        format json
     }
-    tls internal
 
-    # 1. Рецензии и группы → reviews-service:8082
+    # Encode для сжатия ответов
+    encode gzip
+
+    # 1. Рецензии → reviews-service:8082
+    handle /api/v1/reviews {
+        reverse_proxy reviews-service:8082
+    }
     handle /api/v1/reviews/* {
+        reverse_proxy reviews-service:8082
+    }
+    handle /api/v1/groups {
         reverse_proxy reviews-service:8082
     }
     handle /api/v1/groups/* {
         reverse_proxy reviews-service:8082
     }
 
-    # 2. Видеочат и шеринг экрана → screenshare-service:8083
+    # 2. Видеочат / шеринг экрана (WebSocket) → screenshare-service:8083
+    handle /api/v1/screenshare {
+        reverse_proxy screenshare-service:8083
+    }
     handle /api/v1/screenshare/* {
         reverse_proxy screenshare-service:8083
     }
 
     # 3. Заметки → notebook-service:8081
+    handle /api/v1/notes {
+        reverse_proxy notebook-service:8081
+    }
     handle /api/v1/notes/* {
         reverse_proxy notebook-service:8081
     }
 
-    # 4. Всё остальное /api/* (Авторизация и профили) → auth-service:8080
+    # 4. Авторизация и профили → auth-service:8080
     handle /api/* {
         reverse_proxy auth-service:8080
     }
 
-    # 5. Фронтенд (Vite dev-server) → frontend:5173
+    # 5. Фронтенд (Vite dev-server на 5173)
     handle {
         reverse_proxy frontend:5173
     }

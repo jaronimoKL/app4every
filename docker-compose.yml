@@ -5,12 +5,12 @@ services:
     container_name: app4every-caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "2096:443"
+      - "80:80"    # HTTP — нужен для ACME HTTP-01 challenge + редирект HTTP→HTTPS
+      - "443:443"  # HTTPS
+      - "443:443/udp"  # QUIC / HTTP3
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/certs:/etc/caddy/certs
-      - caddy_data:/data
+      - caddy_data:/data    # здесь Caddy хранит сертификаты Let's Encrypt
       - caddy_config:/config
     depends_on:
       - auth-service
