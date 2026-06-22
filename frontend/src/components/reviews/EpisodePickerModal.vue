@@ -34,32 +34,44 @@
               @click="selectEpisode(ep)"
             >
               <div class="ep-num">Эпизод {{ ep.ordinal ?? ep.number }}</div>
-              <div v-if="ep.name || ep.name_english" class="ep-name">{{ ep.name || ep.name_english }}</div>
+              <div class="ep-name">{{ ep.name || ep.name_english || `Серия ${ep.ordinal ?? ep.number}` }}</div>
             </button>
           </div>
 
-          <!-- Выбор качества если эпизод выбран -->
+          <!-- Выбор качества / плеера если эпизод выбран -->
           <div v-if="selectedEpisode" class="mt-2 pt-4 border-t border-white/10">
-            <h4 class="font-bold text-sm mb-3 text-white">Выберите качество:</h4>
+            <!-- Кнопка для запуска Kodik плеера (приоритетный вариант с озвучками) -->
+            <div v-if="externalPlayerUrl" class="mb-4">
+              <button 
+                class="btn btn-primary w-full py-3"
+                style="justify-content: center;"
+                @click="selectKodik(selectedEpisode.ordinal ?? selectedEpisode.number)"
+              >
+                🎬 Смотреть через Kodik (Все озвучки)
+              </button>
+            </div>
+
+            <h4 class="font-bold text-sm mb-3 text-white">Прямой поток (Anilibria):</h4>
             <div class="flex flex-wrap gap-2">
-              <button v-if="selectedEpisode.hls" class="btn btn-primary btn-sm" @click="selectQuality(selectedEpisode.hls)">По умолчанию</button>
-              <button v-if="selectedEpisode.hls_1080" class="btn btn-primary btn-sm" @click="selectQuality(selectedEpisode.hls_1080)">1080p</button>
-              <button v-if="selectedEpisode.hls_720" class="btn btn-primary btn-sm" @click="selectQuality(selectedEpisode.hls_720)">720p</button>
-              <button v-if="selectedEpisode.hls_480" class="btn btn-primary btn-sm" @click="selectQuality(selectedEpisode.hls_480)">480p</button>
+              <button v-if="selectedEpisode.hls" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls)">По умолчанию</button>
+              <button v-if="selectedEpisode.hls_1080" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_1080)">1080p</button>
+              <button v-if="selectedEpisode.hls_720" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_720)">720p</button>
+              <button v-if="selectedEpisode.hls_480" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_480)">480p</button>
               
               <!-- Запасной вариант -->
               <template v-if="!selectedEpisode.hls && !selectedEpisode.hls_1080 && !selectedEpisode.hls_720 && !selectedEpisode.hls_480">
                 <button 
                   v-for="(val, key) in hlsLinks(selectedEpisode)" 
                   :key="key"
-                  class="btn btn-primary btn-sm"
+                  class="btn btn-outline btn-sm"
                   @click="selectQuality(val)"
                 >
                   {{ formatKey(key) }}
                 </button>
               </template>
             </div>
-            <div v-if="!selectedEpisode.hls && !selectedEpisode.hls_1080 && !selectedEpisode.hls_720 && !selectedEpisode.hls_480 && Object.keys(hlsLinks(selectedEpisode)).length === 0" class="text-sm text-red-400 mt-2">
+            
+            <div v-if="!externalPlayerUrl && !selectedEpisode.hls && !selectedEpisode.hls_1080 && !selectedEpisode.hls_720 && !selectedEpisode.hls_480 && Object.keys(hlsLinks(selectedEpisode)).length === 0" class="text-sm text-red-400 mt-2">
               К сожалению, видео-ссылок не найдено.
             </div>
           </div>
@@ -71,7 +83,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { useAnimeSearch } from '@/composables/useAnimeSearch'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   alias: String
@@ -79,16 +91,32 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'select'])
 
-const { fetchEpisodes } = useAnimeSearch()
 const episodes = ref([])
+const externalPlayerUrl = ref('')
 const loading = ref(true)
 const selectedEpisode = ref(null)
 const searchQuery = ref('')
 
 onMounted(async () => {
   if (props.alias) {
-    episodes.value = await fetchEpisodes(props.alias)
-    episodes.value.sort((a,b) => parseFloat(a.number) - parseFloat(b.number))
+    const auth = useAuthStore()
+    try {
+      const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${props.alias}`, {
+        headers: {
+          'Authorization': `Bearer ${auth.accessToken}`
+        }
+      })
+      const data = await res.json()
+      
+      // Запоминаем ссылку на внешний плеер Kodik из релиза
+      externalPlayerUrl.value = data.external_player || ''
+      
+      // Загружаем список эпизодов
+      episodes.value = data.episodes || []
+      episodes.value.sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
+    } catch (e) {
+      console.error("Failed to fetch AniLiberty episodes", e)
+    }
   }
   loading.value = false
 })
@@ -120,6 +148,22 @@ function selectQuality(url) {
   emit('select', url)
 }
 
+function selectKodik(episodeNum) {
+  let url = externalPlayerUrl.value
+  if (!url) return
+  
+  // Приводим к абсолютному протоколу
+  if (url.startsWith('//')) {
+    url = window.location.protocol + url
+  }
+  
+  // Добавляем параметр episode
+  const separator = url.includes('?') ? '&' : '?'
+  url = `${url}${separator}episode=${episodeNum}`
+  
+  emit('select', url)
+}
+
 function hlsLinks(ep) {
   const links = {}
   for (const [key, val] of Object.entries(ep)) {
@@ -130,10 +174,10 @@ function hlsLinks(ep) {
     }
   }
   if (Object.keys(links).length === 0) {
-     if (ep.url && typeof ep.url === 'string') links['Ссылка'] = ep.url;
-     if (ep.video && typeof ep.video === 'string') links['Видео'] = ep.video;
-     if (ep.source && typeof ep.source === 'string') links['Источник'] = ep.source;
-     if (ep.player && typeof ep.player === 'string') links['Плеер'] = ep.player;
+    if (ep.url && typeof ep.url === 'string') links['Ссылка'] = ep.url;
+    if (ep.video && typeof ep.video === 'string') links['Видео'] = ep.video;
+    if (ep.source && typeof ep.source === 'string') links['Источник'] = ep.source;
+    if (ep.player && typeof ep.player === 'string') links['Плеер'] = ep.player;
   }
   return links
 }
@@ -166,6 +210,8 @@ function formatKey(key) {
   padding: 18px 22px 14px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
 }
 .modal-title { font-size: 17px; font-weight: 700; }
 .modal-close {
@@ -188,7 +234,7 @@ function formatKey(key) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 400px;
+  max-height: 300px;
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -234,5 +280,15 @@ function formatKey(key) {
   font-weight: 600;
   color: #fff;
   line-height: 1.3;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.w-full {
+  width: 100%;
 }
 </style>
