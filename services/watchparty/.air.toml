@@ -1,0 +1,25 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/watchparty ./cmd/server"
+  bin = "./tmp/watchparty"
+  delay = 1000
+  exclude_dir = ["tmp", "vendor"]
+  include_ext = ["go"]
+  kill_delay = "0s"
+  log = "build-errors.log"
+  send_interrupt = false
+  stop_on_error = false
+
+[log]
+  time = false
+
+[color]
+  main     = "yellow"
+  watcher  = "cyan"
+  build    = "magenta"
+  runner   = "green"
+
+[misc]
+  clean_on_exit = true

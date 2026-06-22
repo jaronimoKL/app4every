@@ -11,6 +11,8 @@ type Config struct {
 	DBName     string
 	DBSslMode  string
 	JWTSecret  string
+	RedisHost  string
+	RedisPort  string
 }
 
 func LoadConfig() *Config {
@@ -23,6 +25,8 @@ func LoadConfig() *Config {
 		DBName:     getEnv("DB_NAME", "app4every_db"),
 		DBSslMode:  getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:  getEnv("JWT_SECRET", "change_me_in_production"),
+		RedisHost:  getEnv("REDIS_HOST", "redis"),
+		RedisPort:  getEnv("REDIS_PORT", "6379"),
 	}
 }
 

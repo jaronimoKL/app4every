@@ -332,6 +332,14 @@
                       </div>
                     </div>
                     <div v-else style="font-size:11px;color:var(--text-muted);font-style:italic;">Ссылок нет</div>
+                    
+                    <button
+                      v-if="item.aniliberty_alias || (item.links && item.links.length > 0)"
+                      class="watch-together-btn mt-2"
+                      @click.stop="handleWatchTogether(item)"
+                    >
+                      📺 Смотреть вместе
+                    </button>
                   </div>
 
                 </div>
@@ -420,6 +428,12 @@
           <button class="modal-close" @click="closeItemModal">✕</button>
         </div>
         <div class="modal-body" style="padding:20px;">
+          <AnimeSearchStep 
+            v-if="showAnimeSearch"
+            @select="handleAnimeSelect"
+            @skip="showAnimeSearch = false"
+          />
+          <template v-else>
           <!-- Тип контента -->
           <div class="form-group">
             <label class="form-label">Тип</label>
@@ -432,6 +446,13 @@
                 @click="itemForm.content_type = t.value"
               >{{ t.icon }} {{ t.label }}</button>
             </div>
+          </div>
+
+          <!-- Кнопка поиска для аниме -->
+          <div v-if="itemForm.content_type === 'anime' && !isEditingItem" class="mt-4 mb-2">
+            <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
+              🔍 Найти на Shikimori (Автозаполнение)
+            </button>
           </div>
 
           <!-- Название -->
@@ -485,6 +506,7 @@
             <button class="btn btn-ghost" @click="closeItemModal">Отмена</button>
             <button class="btn btn-primary" :disabled="!itemForm.title" @click="saveItem">Сохранить</button>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -532,6 +554,14 @@
       </div>
     </div>
 
+    <!-- Диалог выбора эпизода -->
+    <EpisodePickerModal 
+      v-if="showEpisodePicker"
+      :alias="activeAlias"
+      @close="showEpisodePicker = false"
+      @select="onEpisodeSelect"
+    />
+
   </div>
 </template>
 
@@ -540,9 +570,13 @@ import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { useGroupsStore } from '@/stores/groups'
 import { useAuthStore } from '@/stores/auth'
 import { friendsApi } from '@/services/api'
+import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
+import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
+import { useRouter } from 'vue-router'
 
 const groupsStore = useGroupsStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // ── Состояние ──
 const activeGroupId = ref(null)
@@ -559,6 +593,7 @@ const showItemModal = ref(false)
 const showDeleteConfirm = ref(false)
 const showDeleteGroupConfirm = ref(false)
 const showLeaveConfirm = ref(false)
+const showAnimeSearch = ref(false)
 
 // Формы
 const groupForm = reactive({
@@ -575,7 +610,12 @@ const itemForm = reactive({
   max_episodes: 1,
   poster_url: '',
   genresString: '',
-  notes: ''
+  notes: '',
+  shikimori_id: null,
+  description: '',
+  episodes_total: null,
+  aniliberty_alias: '',
+  shikimori_score: null,
 })
 const isEditingItem = ref(false)
 const itemToDelete = ref(null)
@@ -781,6 +821,12 @@ function openCreateItem() {
   itemForm.poster_url = ''
   itemForm.genresString = ''
   itemForm.notes = ''
+  itemForm.shikimori_id = null
+  itemForm.description = ''
+  itemForm.episodes_total = null
+  itemForm.aniliberty_alias = ''
+  itemForm.shikimori_score = null
+  showAnimeSearch.value = false
   showItemModal.value = true
 }
 
@@ -795,7 +841,37 @@ function openEditItem(item) {
   itemForm.poster_url = item.poster_url
   itemForm.genresString = item.genres ? item.genres.join(', ') : ''
   itemForm.notes = item.notes
+  itemForm.shikimori_id = item.shikimori_id || null
+  itemForm.description = item.description || ''
+  itemForm.episodes_total = item.episodes_total || null
+  itemForm.aniliberty_alias = item.aniliberty_alias || ''
+  itemForm.shikimori_score = item.shikimori_score || null
+  showAnimeSearch.value = false
   showItemModal.value = true
+}
+
+function handleAnimeSelect(anime) {
+  itemForm.title = anime.title
+  itemForm.poster_url = anime.posterFull || anime.poster
+  itemForm.shikimori_id = anime.id
+  itemForm.shikimori_score = anime.score
+  
+  if (anime.details) {
+    itemForm.description = anime.details.description || ''
+    if (anime.details.episodes) {
+      itemForm.max_episodes = anime.details.episodes
+      itemForm.episodes_total = anime.details.episodes
+    }
+    if (anime.details.genres) {
+      itemForm.genresString = anime.details.genres.map(g => g.russian).join(', ')
+    }
+  }
+
+  if (anime.anilibertyRelease) {
+    itemForm.aniliberty_alias = anime.anilibertyRelease.alias
+  }
+
+  showAnimeSearch.value = false
 }
 
 function closeItemModal() {
@@ -825,7 +901,12 @@ async function saveItem() {
     max_episodes: itemForm.max_episodes || 1,
     poster_url: itemForm.poster_url,
     genres,
-    notes: itemForm.notes
+    notes: itemForm.notes,
+    shikimori_id: itemForm.shikimori_id,
+    description: itemForm.description,
+    episodes_total: itemForm.episodes_total,
+    aniliberty_alias: itemForm.aniliberty_alias,
+    shikimori_score: itemForm.shikimori_score
   }
 
   try {
@@ -834,6 +915,8 @@ async function saveItem() {
     } else {
       await groupsStore.addGroupItem(activeGroup.value.id, payload)
     }
+    // Автоматически переключаем таб, чтобы показать новую запись
+    activeTab.value = itemForm.status
     closeItemModal()
   } catch (err) {
     console.error(err)
@@ -843,6 +926,36 @@ async function saveItem() {
 function deleteItemConfirm(item) {
   itemToDelete.value = item
   showDeleteConfirm.value = true
+}
+
+const activeAlias = ref(null)
+const showEpisodePicker = ref(false)
+
+function handleWatchTogether(item) {
+  if (item.aniliberty_alias) {
+    activeAlias.value = item.aniliberty_alias
+    showEpisodePicker.value = true
+  } else if (item.links && item.links.length > 0) {
+    openWatchParty(item.links[0].url)
+  }
+}
+
+function onEpisodeSelect(url) {
+  showEpisodePicker.value = false
+  openWatchParty(url)
+}
+
+function generateUUID() {
+  return Math.random().toString(36).substring(2, 10)
+}
+
+function openWatchParty(videoUrl) {
+  const roomId = generateUUID()
+  sessionStorage.setItem(`wp_url_${roomId}`, videoUrl)
+  router.push(`/watch/room/${roomId}`).catch(err => {
+    console.error('Router push error:', err)
+    window.location.href = `/watch/room/${roomId}`
+  })
 }
 
 async function confirmDeleteItem() {

@@ -15,7 +15,13 @@
           <div class="logo-mark">⬡</div>
           <span style="font-weight:700;font-size:18px;letter-spacing:-0.02em;">App4Every</span>
         </div>
-        <div class="flex items-center gap-3">
+        <div v-if="auth.isAuthenticated" class="flex items-center gap-3">
+          <RouterLink to="/dashboard" class="user-chip glass" style="text-decoration:none;cursor:pointer;">
+            <div class="user-avatar">{{ userInitial }}</div>
+            <span class="user-email">В Дашборд</span>
+          </RouterLink>
+        </div>
+        <div v-else class="flex items-center gap-3">
           <RouterLink to="/login" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;">
             Войти
           </RouterLink>
@@ -42,7 +48,12 @@
           Никакой рекламы, никакого трекинга. Только ты и близкие.
         </p>
 
-        <div class="hero-actions">
+        <div v-if="auth.isAuthenticated" class="hero-actions">
+          <RouterLink to="/dashboard" class="btn btn-primary" style="padding:14px 28px;font-size:15px;">
+            Открыть дашборд →
+          </RouterLink>
+        </div>
+        <div v-else class="hero-actions">
           <RouterLink to="/register" class="btn btn-primary" style="padding:14px 28px;font-size:15px;">
             Создать аккаунт →
           </RouterLink>
@@ -75,6 +86,14 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+const userInitial = computed(() =>
+  (auth.user?.username || auth.user?.email)?.charAt(0).toUpperCase() ?? '?'
+)
 const modules = [
   {
     icon: '📝',
@@ -177,5 +196,30 @@ const modules = [
 .landing-footer {
   padding: 24px 0;
   text-align: center;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 99px;
+}
+.user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--violet));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.user-email {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 </style>

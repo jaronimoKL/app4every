@@ -42,40 +42,54 @@ type ReviewLink struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Review — основная карточка рецензии.
 type Review struct {
-	ID          int64        `json:"id"`
-	UserID      int64        `json:"user_id"`
-	Title       string       `json:"title"`
-	ContentType ContentType  `json:"content_type"`
-	Status      ReviewStatus `json:"status"`
-	Rating      *int16       `json:"rating"`    // nullable: nil = без оценки
-	Notes       string       `json:"notes"`
-	PosterURL   string       `json:"poster_url"` // URL постера (необязателен)
-	Links       []ReviewLink `json:"links"`
-	Genres      []ReviewGenre `json:"genres"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	ID              int64        `json:"id"`
+	UserID          int64        `json:"user_id"`
+	Title           string       `json:"title"`
+	ContentType     ContentType  `json:"content_type"`
+	Status          ReviewStatus `json:"status"`
+	Rating          *int16       `json:"rating"`    // nullable: nil = без оценки
+	Notes           string       `json:"notes"`
+	PosterURL       string       `json:"poster_url"` // URL постера (необязателен)
+	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	Description     string       `json:"description"`
+	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	AnilibertyAlias string       `json:"aniliberty_alias"`
+	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
+	Links           []ReviewLink `json:"links"`
+	Genres          []ReviewGenre `json:"genres"`
+	CreatedAt       time.Time    `json:"created_at"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 // ── Request-типы ──
 
 type CreateReviewRequest struct {
-	Title       string       `json:"title"`
-	ContentType ContentType  `json:"content_type"`
-	Status      ReviewStatus `json:"status"`
-	Rating      *int16       `json:"rating"`
-	Notes       string       `json:"notes"`
-	PosterURL   string       `json:"poster_url"`
+	Title           string       `json:"title"`
+	ContentType     ContentType  `json:"content_type"`
+	Status          ReviewStatus `json:"status"`
+	Rating          *int16       `json:"rating"`
+	Notes           string       `json:"notes"`
+	PosterURL       string       `json:"poster_url"`
+	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	Description     string       `json:"description"`
+	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	AnilibertyAlias string       `json:"aniliberty_alias"`
+	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }
 
 type UpdateReviewRequest struct {
-	Title       string       `json:"title"`
-	ContentType ContentType  `json:"content_type"`
-	Status      ReviewStatus `json:"status"`
-	Rating      *int16       `json:"rating"`
-	Notes       string       `json:"notes"`
-	PosterURL   string       `json:"poster_url"`
+	Title           string       `json:"title"`
+	ContentType     ContentType  `json:"content_type"`
+	Status          ReviewStatus `json:"status"`
+	Rating          *int16       `json:"rating"`
+	Notes           string       `json:"notes"`
+	PosterURL       string       `json:"poster_url"`
+	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	Description     string       `json:"description"`
+	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	AnilibertyAlias string       `json:"aniliberty_alias"`
+	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }
 
 type AddLinkRequest struct {

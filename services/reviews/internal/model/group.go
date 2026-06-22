@@ -47,6 +47,11 @@ type GroupItem struct {
 	Notes           string            `json:"notes"`
 	PosterURL       string            `json:"poster_url"`
 	Genres          []string          `json:"genres"` // массив строк (TEXT[])
+	ShikimoriID     *int              `json:"shikimori_id,omitempty"`
+	Description     string            `json:"description"`
+	EpisodesTotal   *int              `json:"episodes_total,omitempty"`
+	AnilibertyAlias string            `json:"aniliberty_alias"`
+	ShikimoriScore  *float64          `json:"shikimori_score,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
 	UpdatedAt       time.Time         `json:"updated_at"`
 	Ratings         []GroupItemRating `json:"ratings"`
@@ -93,25 +98,35 @@ type InviteUserRequest struct {
 }
 
 type CreateGroupItemRequest struct {
-	Title          string       `json:"title"`
-	ContentType    ContentType  `json:"content_type"`
-	Status         ReviewStatus `json:"status"`
-	CurrentEpisode int          `json:"current_episode"`
-	MaxEpisodes    int          `json:"max_episodes"`
-	Notes          string       `json:"notes"`
-	PosterURL      string       `json:"poster_url"`
-	Genres         []string     `json:"genres"`
+	Title           string       `json:"title"`
+	ContentType     ContentType  `json:"content_type"`
+	Status          ReviewStatus `json:"status"`
+	CurrentEpisode  int          `json:"current_episode"`
+	MaxEpisodes     int          `json:"max_episodes"`
+	Notes           string       `json:"notes"`
+	PosterURL       string       `json:"poster_url"`
+	Genres          []string     `json:"genres"`
+	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	Description     string       `json:"description"`
+	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	AnilibertyAlias string       `json:"aniliberty_alias"`
+	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }
 
 type UpdateGroupItemRequest struct {
-	Title          string       `json:"title"`
-	ContentType    ContentType  `json:"content_type"`
-	Status         ReviewStatus `json:"status"`
-	CurrentEpisode int          `json:"current_episode"`
-	MaxEpisodes    int          `json:"max_episodes"`
-	Notes          string       `json:"notes"`
-	PosterURL      string       `json:"poster_url"`
-	Genres         []string     `json:"genres"`
+	Title           string       `json:"title"`
+	ContentType     ContentType  `json:"content_type"`
+	Status          ReviewStatus `json:"status"`
+	CurrentEpisode  int          `json:"current_episode"`
+	MaxEpisodes     int          `json:"max_episodes"`
+	Notes           string       `json:"notes"`
+	PosterURL       string       `json:"poster_url"`
+	Genres          []string     `json:"genres"`
+	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	Description     string       `json:"description"`
+	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	AnilibertyAlias string       `json:"aniliberty_alias"`
+	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }
 
 type GroupItemRatingRequest struct {

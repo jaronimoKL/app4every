@@ -4,10 +4,12 @@ services:
     image: caddy:2-alpine
     container_name: app4every-caddy
     restart: unless-stopped
+    environment:
+      # Локалка: :80 (чистый HTTP, без TLS)
+      # Прод:   заменяется в docker-compose.prod.yml на jaronimo.work.gd
+      - SITE_ADDRESS=:80
     ports:
-      - "80:80"    # HTTP — нужен для ACME HTTP-01 challenge + редирект HTTP→HTTPS
-      - "443:443"  # HTTPS
-      - "443:443/udp"  # QUIC / HTTP3
+      - "80:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data    # здесь Caddy хранит сертификаты Let's Encrypt
@@ -17,6 +19,7 @@ services:
       - notebook-service
       - reviews-service
       - screenshare-service
+      - watchparty-service
       - frontend
     networks:
       - app4every_network
@@ -127,6 +130,24 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - app4every_network
+
+  # 4c. Go Backend (Watch Party service)
+  watchparty-service:
+    build:
+      context: ./services/watchparty
+      dockerfile: Dockerfile
+      target: dev
+    container_name: app4every-watchparty
+    restart: unless-stopped
+    volumes:
+      - ./services/watchparty:/app
+      - /app/tmp
+    environment:
+      - PORT=8084
+      - JWT_SECRET=your-very-secure-local-jwt-secret-key
+      - AUTH_SERVICE_URL=http://auth-service:8080
     networks:
       - app4every_network
 

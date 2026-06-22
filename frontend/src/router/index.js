@@ -73,6 +73,18 @@ const routes = [
     component: () => import('@/views/screenshare/RoomView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/watch',
+    name: 'watch-lobby',
+    component: () => import('@/views/watchparty/WatchPartyLobby.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/watch/room/:roomId',
+    name: 'watch-room',
+    component: () => import('@/views/watchparty/WatchPartyRoom.vue'),
+    meta: { requiresAuth: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

@@ -375,12 +375,12 @@ func (r *postgresGroupRepository) GetGroupMembers(ctx context.Context, groupID i
 func (r *postgresGroupRepository) AddGroupItem(ctx context.Context, groupID, userID int64, req model.CreateGroupItemRequest) (*model.GroupItem, error) {
 	item := &model.GroupItem{Ratings: []model.GroupItemRating{}, Links: []model.GroupItemLink{}}
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO group_items (group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, created_at, updated_at
-	`, groupID, userID, req.Title, req.ContentType, req.Status, req.CurrentEpisode, req.MaxEpisodes, req.Notes, req.PosterURL, req.Genres).
+		INSERT INTO group_items (group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
+		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
+	`, groupID, userID, req.Title, req.ContentType, req.Status, req.CurrentEpisode, req.MaxEpisodes, req.Notes, req.PosterURL, req.Genres, req.ShikimoriID, req.Description, req.EpisodesTotal, req.AnilibertyAlias, req.ShikimoriScore).
 		Scan(&item.ID, &item.GroupID, &item.AddedBy, &item.Title, &item.ContentType, &item.Status, &item.CurrentEpisode, &item.MaxEpisodes,
-			&item.Notes, &item.PosterURL, &item.Genres, &item.CreatedAt, &item.UpdatedAt)
+			&item.Notes, &item.PosterURL, &item.Genres, &item.ShikimoriID, &item.Description, &item.EpisodesTotal, &item.AnilibertyAlias, &item.ShikimoriScore, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -394,12 +394,12 @@ func (r *postgresGroupRepository) UpdateGroupItem(ctx context.Context, groupID, 
 	item := &model.GroupItem{}
 	err := r.db.QueryRow(ctx, `
 		UPDATE group_items
-		SET title = $1, content_type = $2, status = $3, current_episode = $4, max_episodes = $5, notes = $6, poster_url = $7, genres = $8, updated_at = NOW()
-		WHERE id = $9 AND group_id = $10 AND added_by = $11
-		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, created_at, updated_at
-	`, req.Title, req.ContentType, req.Status, req.CurrentEpisode, req.MaxEpisodes, req.Notes, req.PosterURL, req.Genres, itemID, groupID, userID).
+		SET title = $1, content_type = $2, status = $3, current_episode = $4, max_episodes = $5, notes = $6, poster_url = $7, genres = $8, shikimori_id = $9, description = $10, episodes_total = $11, aniliberty_alias = $12, shikimori_score = $13, updated_at = NOW()
+		WHERE id = $14 AND group_id = $15 AND added_by = $16
+		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
+	`, req.Title, req.ContentType, req.Status, req.CurrentEpisode, req.MaxEpisodes, req.Notes, req.PosterURL, req.Genres, req.ShikimoriID, req.Description, req.EpisodesTotal, req.AnilibertyAlias, req.ShikimoriScore, itemID, groupID, userID).
 		Scan(&item.ID, &item.GroupID, &item.AddedBy, &item.Title, &item.ContentType, &item.Status, &item.CurrentEpisode, &item.MaxEpisodes,
-			&item.Notes, &item.PosterURL, &item.Genres, &item.CreatedAt, &item.UpdatedAt)
+			&item.Notes, &item.PosterURL, &item.Genres, &item.ShikimoriID, &item.Description, &item.EpisodesTotal, &item.AnilibertyAlias, &item.ShikimoriScore, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrItemNotFound
@@ -426,10 +426,10 @@ func (r *postgresGroupRepository) UpdateGroupItemStatusOnly(ctx context.Context,
 		UPDATE group_items
 		SET status = $1, updated_at = NOW()
 		WHERE id = $2 AND group_id = $3
-		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, created_at, updated_at
+		RETURNING id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
 	`, status, itemID, groupID).
 		Scan(&item.ID, &item.GroupID, &item.AddedBy, &item.Title, &item.ContentType, &item.Status, &item.CurrentEpisode, &item.MaxEpisodes,
-			&item.Notes, &item.PosterURL, &item.Genres, &item.CreatedAt, &item.UpdatedAt)
+			&item.Notes, &item.PosterURL, &item.Genres, &item.ShikimoriID, &item.Description, &item.EpisodesTotal, &item.AnilibertyAlias, &item.ShikimoriScore, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrItemNotFound
@@ -462,10 +462,10 @@ func (r *postgresGroupRepository) DeleteGroupItem(ctx context.Context, groupID, 
 func (r *postgresGroupRepository) GetGroupItemByID(ctx context.Context, itemID int64) (*model.GroupItem, error) {
 	item := &model.GroupItem{}
 	err := r.db.QueryRow(ctx, `
-		SELECT id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, created_at, updated_at
+		SELECT id, group_id, added_by, title, content_type, status, current_episode, max_episodes, notes, poster_url, genres, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
 		FROM group_items WHERE id = $1
 	`, itemID).Scan(&item.ID, &item.GroupID, &item.AddedBy, &item.Title, &item.ContentType, &item.Status, &item.CurrentEpisode, &item.MaxEpisodes,
-		&item.Notes, &item.PosterURL, &item.Genres, &item.CreatedAt, &item.UpdatedAt)
+		&item.Notes, &item.PosterURL, &item.Genres, &item.ShikimoriID, &item.Description, &item.EpisodesTotal, &item.AnilibertyAlias, &item.ShikimoriScore, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrItemNotFound
@@ -493,7 +493,7 @@ func (r *postgresGroupRepository) GetGroupItemByID(ctx context.Context, itemID i
 
 func (r *postgresGroupRepository) GetGroupItems(ctx context.Context, groupID int64) ([]model.GroupItem, error) {
 	query := `
-		SELECT gi.id, gi.group_id, gi.added_by, u.username as added_by_username, gi.title, gi.content_type, gi.status, gi.current_episode, gi.max_episodes, gi.notes, gi.poster_url, gi.genres, gi.created_at, gi.updated_at
+		SELECT gi.id, gi.group_id, gi.added_by, u.username as added_by_username, gi.title, gi.content_type, gi.status, gi.current_episode, gi.max_episodes, gi.notes, gi.poster_url, gi.genres, gi.shikimori_id, gi.description, gi.episodes_total, gi.aniliberty_alias, gi.shikimori_score, gi.created_at, gi.updated_at
 		FROM group_items gi
 		JOIN users u ON gi.added_by = u.id
 		WHERE gi.group_id = $1
@@ -512,7 +512,7 @@ func (r *postgresGroupRepository) GetGroupItems(ctx context.Context, groupID int
 	for rows.Next() {
 		it := model.GroupItem{Ratings: []model.GroupItemRating{}, Links: []model.GroupItemLink{}}
 		err := rows.Scan(&it.ID, &it.GroupID, &it.AddedBy, &it.AddedByUsername, &it.Title, &it.ContentType, &it.Status, &it.CurrentEpisode, &it.MaxEpisodes,
-			&it.Notes, &it.PosterURL, &it.Genres, &it.CreatedAt, &it.UpdatedAt)
+			&it.Notes, &it.PosterURL, &it.Genres, &it.ShikimoriID, &it.Description, &it.EpisodesTotal, &it.AnilibertyAlias, &it.ShikimoriScore, &it.CreatedAt, &it.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}

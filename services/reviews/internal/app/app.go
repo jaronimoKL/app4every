@@ -10,6 +10,8 @@ import (
 	v1 "app4every/services/reviews/internal/delivery/http/v1"
 	"app4every/services/reviews/internal/repository"
 	"app4every/services/reviews/internal/service"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func Run() error {
@@ -30,6 +32,12 @@ func Run() error {
 	hub       := v1.NewHub()
 	groupHandler := v1.NewGroupHandler(groupSvc, hub)
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+	})
+
+	integrationHandler := v1.NewIntegrationHandler(redisClient)
+
 	auth    := delivery.AuthMiddleware(cfg)
 
 	mux := http.NewServeMux()
@@ -48,6 +56,12 @@ func Run() error {
 	// /api/v1/groups/      → group details, invites, items, websocket
 	mux.Handle("/api/v1/groups", auth(http.HandlerFunc(groupHandler.HandleGroups)))
 	mux.Handle("/api/v1/groups/", auth(http.HandlerFunc(groupHandler.HandleGroupsByID)))
+
+	// Integrations
+	mux.Handle("/api/v1/reviews/integrations/shikimori/search", auth(http.HandlerFunc(integrationHandler.ShikimoriSearch)))
+	mux.Handle("/api/v1/reviews/integrations/aniliberty/search", auth(http.HandlerFunc(integrationHandler.AnilibertySearch)))
+	mux.Handle("/api/v1/reviews/integrations/aniliberty/episodes/", auth(http.HandlerFunc(integrationHandler.AnilibertyEpisodes)))
+	mux.Handle("/api/v1/reviews/integrations/aniliberty/proxy", http.HandlerFunc(integrationHandler.AnilibertyProxy))
 
 	server := &http.Server{Addr: ":" + cfg.Port, Handler: mux}
 	fmt.Printf("[reviews] Server starting on port %s...\n", cfg.Port)

@@ -43,6 +43,13 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to migrate reviews table: %w", err)
 	}
 
+	// Миграции для новых полей Anime
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shikimori_id INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS episodes_total INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS aniliberty_alias TEXT NOT NULL DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shikimori_score NUMERIC(4,2);`)
+
 	// Таблица ссылок — CASCADE удаляет ссылки вместе с рецензией
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS review_links (
@@ -157,6 +164,13 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS current_episode INT NOT NULL DEFAULT 1;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS max_episodes INT NOT NULL DEFAULT 1;`)
+
+	// Миграции для новых полей Anime в группах
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS shikimori_id INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS episodes_total INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS aniliberty_alias TEXT NOT NULL DEFAULT '';`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS shikimori_score NUMERIC(4,2);`)
 
 	// 5. Персональные оценки участников
 	_, err = pool.Exec(ctx, `

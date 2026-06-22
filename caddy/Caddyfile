@@ -1,16 +1,17 @@
 # ══════════════════════════════════════════════════════════════
-#  Caddy — Production конфиг для jaronimo.work.gd
-#  Let's Encrypt выдаёт и обновляет сертификат автоматически.
-#  Caddy сам делает HTTP → HTTPS редирект.
+#  Единый Caddyfile для локалки и прода.
+#  Переключение через переменную окружения SITE_ADDRESS:
+#
+#  Локалка:  SITE_ADDRESS=:80          → HTTP, без TLS
+#  Прод:     SITE_ADDRESS=jaronimo.work.gd → HTTPS, Let's Encrypt
 # ══════════════════════════════════════════════════════════════
 
-jaronimo.work.gd {
+{$SITE_ADDRESS:localhost} {
     log {
         output stdout
         format json
     }
 
-    # Encode для сжатия ответов
     encode gzip
 
     # 1. Рецензии → reviews-service:8082
@@ -35,7 +36,15 @@ jaronimo.work.gd {
         reverse_proxy screenshare-service:8083
     }
 
-    # 3. Заметки → notebook-service:8081
+    # 3. Watch Party → watchparty-service:8084
+    handle /api/v1/watchparty {
+        reverse_proxy watchparty-service:8084
+    }
+    handle /api/v1/watchparty/* {
+        reverse_proxy watchparty-service:8084
+    }
+
+    # 4. Заметки → notebook-service:8081
     handle /api/v1/notes {
         reverse_proxy notebook-service:8081
     }
@@ -43,12 +52,12 @@ jaronimo.work.gd {
         reverse_proxy notebook-service:8081
     }
 
-    # 4. Авторизация и профили → auth-service:8080
+    # 5. Авторизация и профили → auth-service:8080
     handle /api/* {
         reverse_proxy auth-service:8080
     }
 
-    # 5. Фронтенд (Vite dev-server на 5173)
+    # 6. Фронтенд (Vite dev-server на 5173)
     handle {
         reverse_proxy frontend:5173
     }

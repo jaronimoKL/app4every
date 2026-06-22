@@ -166,6 +166,21 @@
               >
                 🔗 {{ link.label || 'Ссылка' }}
               </a>
+              <button
+                v-if="rev.aniliberty_alias || (rev.links && rev.links.length > 0)"
+                class="watch-together-btn"
+                @click.stop="handleWatchTogether(rev)"
+              >
+                📺 Смотреть вместе
+              </button>
+            </div>
+            <div class="card-links" v-else-if="rev.aniliberty_alias" @click.stop>
+              <button
+                class="watch-together-btn"
+                @click.stop="handleWatchTogether(rev)"
+              >
+                📺 Смотреть вместе
+              </button>
             </div>
           </div>
         </div>
@@ -183,6 +198,12 @@
         </div>
 
         <div class="modal-body">
+          <AnimeSearchStep 
+            v-if="showAnimeSearch"
+            @select="handleAnimeSelect"
+            @skip="showAnimeSearch = false"
+          />
+          <template v-else>
 
           <!-- Тип контента -->
           <div class="form-group">
@@ -196,6 +217,13 @@
                 @click="form.content_type = t.value"
               >{{ t.icon }} {{ t.label }}</button>
             </div>
+          </div>
+
+          <!-- Кнопка поиска для аниме (только при создании) -->
+          <div v-if="form.content_type === 'anime' && !isEditing" class="mb-4">
+            <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
+              🔍 Найти на Shikimori (Автозаполнение)
+            </button>
           </div>
 
           <!-- Название -->
@@ -318,6 +346,7 @@
               ＋ Добавить ссылку
             </button>
           </div>
+          </template>
         </div>
 
         <!-- Кнопки -->
@@ -352,15 +381,27 @@
         </div>
       </div>
     </div>
+    
+    <!-- Диалог выбора эпизода -->
+    <EpisodePickerModal 
+      v-if="showEpisodePicker"
+      :alias="activeAlias"
+      @close="showEpisodePicker = false"
+      @select="onEpisodeSelect"
+    />
 
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useReviewsStore } from '@/stores/reviews'
 import { useGroupsStore } from '@/stores/groups'
+import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
+import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
 
+const router = useRouter()
 const store = useReviewsStore()
 const groupsStore = useGroupsStore()
 
@@ -503,6 +544,7 @@ const editingReview   = ref(null)
 const posterLoadError = ref(false)
 const newLinks        = ref([])  // новые ссылки для добавления
 const newGenreName    = ref('')  // имя нового жанра в инпуте
+const showAnimeSearch = ref(false)
 
 const defaultGenres = {
   movie: ['Боевик', 'Комедия', 'Драма', 'Триллер', 'Ужасы', 'Фантастика', 'Фэнтези', 'Мелодрама', 'Криминал', 'Приключения', 'Аниме-фильм', 'Документальный'],
@@ -522,6 +564,11 @@ const form = reactive({
   notes:        '',
   poster_url:   '',
   genres:       [],
+  shikimori_id: null,
+  description: '',
+  episodes_total: null,
+  aniliberty_alias: '',
+  shikimori_score: null,
 })
 
 function resetForm() {
@@ -533,9 +580,15 @@ function resetForm() {
   form.notes        = ''
   form.poster_url   = ''
   form.genres       = []
+  form.shikimori_id = null
+  form.description = ''
+  form.episodes_total = null
+  form.aniliberty_alias = ''
+  form.shikimori_score = null
   newLinks.value    = []
   newGenreName.value = ''
   posterLoadError.value = false
+  showAnimeSearch.value = false
 }
 
 function openCreate() {
@@ -556,10 +609,41 @@ function openEdit(rev) {
   form.notes          = rev.notes
   form.poster_url     = rev.poster_url
   form.genres         = rev.genres ? [...rev.genres] : []
+  form.shikimori_id   = rev.shikimori_id || null
+  form.description    = rev.description || ''
+  form.episodes_total = rev.episodes_total || null
+  form.aniliberty_alias = rev.aniliberty_alias || ''
+  form.shikimori_score = rev.shikimori_score || null
   newLinks.value      = []
   newGenreName.value = ''
   posterLoadError.value = false
+  showAnimeSearch.value = false
   showModal.value = true
+}
+
+function handleAnimeSelect(anime) {
+  form.title = anime.title
+  form.poster_url = anime.posterFull || anime.poster
+  form.shikimori_id = anime.id
+  form.shikimori_score = anime.score
+  
+  if (anime.details) {
+    form.description = anime.details.description || ''
+    if (anime.details.episodes) form.episodes_total = anime.details.episodes
+    if (anime.details.genres) {
+      anime.details.genres.forEach(g => {
+        if (!form.genres.some(fg => fg.name.toLowerCase() === g.russian.toLowerCase())) {
+          form.genres.push({ name: g.russian })
+        }
+      })
+    }
+  }
+
+  if (anime.anilibertyRelease) {
+    form.aniliberty_alias = anime.anilibertyRelease.alias
+  }
+
+  showAnimeSearch.value = false
 }
 
 function closeModal() {
@@ -617,27 +701,33 @@ async function handleSave() {
   }
 
   let savedReview
-  if (isEditing.value) {
-    savedReview = await store.updateReview(editingReview.value.id, payload)
-  } else {
-    savedReview = await store.createReview(payload)
-  }
-
-  // Добавляем новые ссылки если есть
-  for (const nl of newLinks.value) {
-    if (nl.url.trim()) {
-      await store.addLink(savedReview.id, nl.label.trim(), nl.url.trim())
+  try {
+    if (isEditing.value) {
+      savedReview = await store.updateReview(editingReview.value.id, payload)
+    } else {
+      savedReview = await store.createReview(payload)
     }
-  }
 
-  // Добавляем новые жанры если есть (для создания)
-  if (!isEditing.value) {
-    for (const g of form.genres) {
-      await store.addGenre(savedReview.id, g.name)
+    // Добавляем новые ссылки если есть
+    for (const nl of newLinks.value) {
+      if (nl.url.trim()) {
+        await store.addLink(savedReview.id, nl.label.trim(), nl.url.trim())
+      }
     }
-  }
 
-  closeModal()
+    // Добавляем новые жанры если есть (для создания)
+    if (!isEditing.value) {
+      for (const g of form.genres) {
+        await store.addGenre(savedReview.id, g.name)
+      }
+    }
+
+    // Автоматически переключаем таб, чтобы показать новую запись
+    activeTab.value = form.status
+    closeModal()
+  } catch (err) {
+    console.error('Failed to save review', err)
+  }
 }
 
 // ── Удаление ──
@@ -689,6 +779,36 @@ function truncUrl(url) {
     const u = new URL(url)
     return u.hostname + (u.pathname.length > 20 ? u.pathname.slice(0, 20) + '…' : u.pathname)
   } catch { return url.slice(0, 40) }
+}
+
+function generateUUID() {
+  return Math.random().toString(36).substring(2, 10)
+}
+
+const activeAlias = ref(null)
+const showEpisodePicker = ref(false)
+
+function handleWatchTogether(rev) {
+  if (rev.aniliberty_alias) {
+    activeAlias.value = rev.aniliberty_alias
+    showEpisodePicker.value = true
+  } else if (rev.links && rev.links.length > 0) {
+    openWatchParty(rev.links[0].url)
+  }
+}
+
+function onEpisodeSelect(url) {
+  showEpisodePicker.value = false
+  openWatchParty(url)
+}
+
+function openWatchParty(videoUrl) {
+  const roomId = generateUUID()
+  sessionStorage.setItem(`wp_url_${roomId}`, videoUrl)
+  router.push(`/watch/room/${roomId}`).catch(err => {
+    console.error('Router push error:', err)
+    window.location.href = `/watch/room/${roomId}`
+  })
 }
 </script>
 
@@ -835,7 +955,26 @@ function truncUrl(url) {
   color: var(--text-secondary); text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
-.link-pill:hover { background: rgba(99,102,241,0.2); color: #a5b4fc; border-color: rgba(99,102,241,0.4); }
+.link-pill:hover { background: rgba(99,102,241,0.25); color: #fff; }
+
+.watch-together-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.watch-together-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+}
 
 /* ══ Модал ══ */
 .modal-overlay {

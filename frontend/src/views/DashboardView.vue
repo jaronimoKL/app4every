@@ -132,6 +132,14 @@ const modules = [
     tech: ['Go', 'WebRTC', 'WebSocket'],
     link: '/screenshare',
   },
+  {
+    icon: '📺',
+    name: 'Watch Party',
+    desc: 'Смотри YouTube, Rutube и видеофайлы вместе с друзьями. Синхронный play/pause/seek.',
+    iconBg: 'rgba(239,68,68,0.15)',
+    tech: ['Go', 'WebSocket', 'YouTube API'],
+    link: '/watch',
+  },
 ]
 
 // Статус сервисов (в реальности можно подтягивать с /api/health)

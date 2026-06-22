@@ -1,0 +1,10 @@
+# docker-compose.override.yml
+#
+# Этот файл применяется автоматически при: docker compose up
+#
+# Переключение локалка ↔ прод теперь через SITE_ADDRESS в docker-compose.yml
+# и docker-compose.prod.yml — этот файл оставлен пустым намеренно.
+#
+# Если нужны локальные переопределения — добавляй сюда.
+
+services: {}

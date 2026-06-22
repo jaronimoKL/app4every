@@ -172,7 +172,7 @@ func (s *groupService) AddGroupItem(ctx context.Context, groupID, userID int64, 
 	}
 
 	// Правило 2: Когда запись добавляется автором -> авто-создание рецензии в его личном списке
-	s.syncPersonalReview(ctx, userID, item.Title, item.ContentType, item.Status, item.PosterURL, item.Notes, item.Genres, groupName)
+	s.syncPersonalReview(ctx, userID, item, groupName)
 
 	// Правило 1: Если статус сразу completed -> синхронизируем completed рецензии всем участникам группы
 	if item.Status == model.StatusCompleted {
@@ -292,15 +292,20 @@ func (s *groupService) DeleteGroupItemLink(ctx context.Context, groupID, linkID,
 
 // ── Вспомогательные методы синхронизации ──
 
-func (s *groupService) syncPersonalReview(ctx context.Context, userID int64, title string, contentType model.ContentType, status model.ReviewStatus, posterURL, notes string, genres []string, groupName string) {
+func (s *groupService) syncPersonalReview(ctx context.Context, userID int64, item *model.GroupItem, groupName string, forceStatus ...model.ReviewStatus) {
 	existingReviews, err := s.reviewRepo.GetAllByUserID(ctx, userID)
 	if err != nil {
 		return
 	}
 
+	status := item.Status
+	if len(forceStatus) > 0 {
+		status = forceStatus[0]
+	}
+
 	var match *model.Review
 	for _, r := range existingReviews {
-		if r.Title == title && r.ContentType == contentType {
+		if r.Title == item.Title && r.ContentType == item.ContentType {
 			match = r
 			break
 		}
@@ -308,7 +313,7 @@ func (s *groupService) syncPersonalReview(ctx context.Context, userID int64, tit
 
 	if match == nil {
 		// Создаем рецензию
-		notesWithGroup := notes
+		notesWithGroup := item.Notes
 		if groupName != "" {
 			if notesWithGroup != "" {
 				notesWithGroup += "\n\n"
@@ -317,15 +322,20 @@ func (s *groupService) syncPersonalReview(ctx context.Context, userID int64, tit
 		}
 
 		createReq := model.CreateReviewRequest{
-			Title:       title,
-			ContentType: contentType,
-			Status:      status,
-			PosterURL:   posterURL,
-			Notes:       notesWithGroup,
+			Title:           item.Title,
+			ContentType:     item.ContentType,
+			Status:          status,
+			PosterURL:       item.PosterURL,
+			Notes:           notesWithGroup,
+			ShikimoriID:     item.ShikimoriID,
+			Description:     item.Description,
+			EpisodesTotal:   item.EpisodesTotal,
+			AnilibertyAlias: item.AnilibertyAlias,
+			ShikimoriScore:  item.ShikimoriScore,
 		}
 		newReview, err := s.reviewRepo.Create(ctx, userID, createReq)
 		if err == nil && newReview != nil {
-			for _, gName := range genres {
+			for _, gName := range item.Genres {
 				_, _ = s.reviewRepo.AddGenre(ctx, newReview.ID, userID, gName)
 			}
 		}
@@ -333,12 +343,17 @@ func (s *groupService) syncPersonalReview(ctx context.Context, userID int64, tit
 		// Если рецензия существует и статус перешел в completed, обновляем ее статус
 		if status == model.StatusCompleted && match.Status != model.StatusCompleted {
 			updateReq := model.UpdateReviewRequest{
-				Title:       match.Title,
-				ContentType: match.ContentType,
-				Status:      model.StatusCompleted,
-				Rating:      match.Rating,
-				Notes:       match.Notes,
-				PosterURL:   match.PosterURL,
+				Title:           match.Title,
+				ContentType:     match.ContentType,
+				Status:          model.StatusCompleted,
+				Rating:          match.Rating,
+				Notes:           match.Notes,
+				PosterURL:       match.PosterURL,
+				ShikimoriID:     match.ShikimoriID,
+				Description:     match.Description,
+				EpisodesTotal:   match.EpisodesTotal,
+				AnilibertyAlias: match.AnilibertyAlias,
+				ShikimoriScore:  match.ShikimoriScore,
 			}
 			_, _ = s.reviewRepo.Update(ctx, match.ID, userID, updateReq)
 		}
@@ -352,6 +367,6 @@ func (s *groupService) syncCompletedToAllMembers(ctx context.Context, groupID in
 	}
 
 	for _, m := range members {
-		s.syncPersonalReview(ctx, m.UserID, item.Title, item.ContentType, model.StatusCompleted, item.PosterURL, item.Notes, item.Genres, groupName)
+		s.syncPersonalReview(ctx, m.UserID, item, groupName, model.StatusCompleted)
 	}
 }

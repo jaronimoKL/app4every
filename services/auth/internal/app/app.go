@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"app4every/services/auth/internal/config"
@@ -56,6 +58,31 @@ func Run() error {
 	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
 	mux.HandleFunc("/api/v1/auth/forgot-password", authHandler.ForgotPassword)
 	mux.HandleFunc("/api/v1/auth/reset-password", authHandler.ResetPassword)
+
+	// ── Внутренние маршруты (только для docker network) ──
+	mux.HandleFunc("/internal/users/", func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/internal/users/"), "/")
+		if len(parts) == 2 && parts[1] == "friends" {
+			userID, err := strconv.ParseInt(parts[0], 10, 64)
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusBadRequest)
+				return
+			}
+			friends, err := authService.GetFriends(r.Context(), userID)
+			if err != nil {
+				http.Error(w, "internal_error", http.StatusInternalServerError)
+				return
+			}
+			var friendIDs []int64
+			for _, f := range friends {
+				friendIDs = append(friendIDs, f.ID)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(friendIDs)
+			return
+		}
+		http.NotFound(w, r)
+	})
 
 	// ── Защищённые маршруты ──
 	// Все маршруты в protectedMux проходят через AuthMiddleware.
