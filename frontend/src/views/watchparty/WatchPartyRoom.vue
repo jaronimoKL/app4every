@@ -337,19 +337,18 @@ function onTranslationSelect(t) {
   
   let targetEp = currentEpisode.value
   const seasons = t.seasons || {}
-  let hasEp = false
   let baseLink = ''
   
+  // Ищем ссылку на текущий эпизод в новом переводе
   for (const sKey in seasons) {
     if (seasons[sKey].episodes && seasons[sKey].episodes[targetEp]) {
-      hasEp = true
       baseLink = seasons[sKey].episodes[targetEp]
       break
     }
   }
   
-  if (!hasEp) {
-    targetEp = 1
+  // Если эпизод не нашёлся — берём первый доступный эпизод
+  if (!baseLink) {
     for (const sKey in seasons) {
       if (seasons[sKey].episodes) {
         const sortedKeys = Object.keys(seasons[sKey].episodes).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
@@ -362,35 +361,33 @@ function onTranslationSelect(t) {
     }
   }
 
+  // Если всё ещё нет ссылки — используем serial-уровень link
+  if (!baseLink) {
+    baseLink = t.link || ''
+  }
+
   const shId = currentShikimoriId.value
   const alias = currentAlias.value
   
   if (roomState.videoType === 'alloha') {
     const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
-    const url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${targetEp}&translation=${encodeURIComponent(t.translation.title)}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}`
+    const url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${targetEp}&translation=${encodeURIComponent(t.translation.title)}&translation_id=${t.translation.id}`
     changeVideo(url, 'alloha')
   } else {
-    if (!baseLink) {
-      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}`
-    } else if (baseLink.startsWith('//')) {
+    // Kodik: используем прямую ссылку из API без лишних параметров
+    if (baseLink.startsWith('//')) {
       baseLink = 'https:' + baseLink
     }
-    
+    // Принудительно переписываем домен на рабочий миррор
     try {
       const urlObj = new URL(baseLink)
-      urlObj.searchParams.set('only_episode', 'true')
-      urlObj.searchParams.set('only_translation', 'true')
-      urlObj.searchParams.set('shikimori', String(shId))
-      if (alias) {
-        urlObj.searchParams.set('alias', alias)
-      }
-      if (t.translation.id) {
-        urlObj.searchParams.set('translation_id', String(t.translation.id))
-      }
+      urlObj.hostname = 'kodikplayer.com'
+      // Добавляем метаданные для гостей (плеер Kodik игнорирует неизвестные параметры)
+      if (shId) urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) urlObj.searchParams.set('alias', alias)
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
-      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-      changeVideo(fallbackUrl, 'kodik')
+      changeVideo(baseLink, 'kodik')
     }
   }
 }
@@ -408,47 +405,42 @@ function onEpisodeSelect(episodeNum) {
     const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
     
     let url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${episodeNum}`
-    if (transTitle) {
-      url += `&translation=${encodeURIComponent(transTitle)}`
-    }
-    if (translationId) {
-      url += `&translation_id=${translationId}`
-    }
-    url += `&shikimori=${shId}&alias=${alias}`
+    if (transTitle) url += `&translation=${encodeURIComponent(transTitle)}`
+    if (translationId) url += `&translation_id=${translationId}`
     changeVideo(url, 'alloha')
   } else {
+    // Kodik: ищем прямую ссылку на эпизод в данных API
     let baseLink = ''
-    if (activeTranslationData.value && activeTranslationData.value.seasons) {
-      const seasons = activeTranslationData.value.seasons
-      for (const sKey in seasons) {
-        if (seasons[sKey].episodes && seasons[sKey].episodes[episodeNum]) {
-          baseLink = seasons[sKey].episodes[episodeNum]
+    if (activeTranslationData.value?.seasons) {
+      for (const sKey in activeTranslationData.value.seasons) {
+        const epLink = activeTranslationData.value.seasons[sKey]?.episodes?.[episodeNum]
+        if (epLink) {
+          baseLink = epLink
           break
         }
       }
     }
     
+    // Если конкретная ссылка не нашлась — используем serial-уровень ссылку с параметром episode
     if (!baseLink) {
-      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}`
-    } else if (baseLink.startsWith('//')) {
+      baseLink = activeTranslationData.value?.link
+        ? activeTranslationData.value.link
+        : `//kodikplayer.com/serial/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}`
+    }
+
+    if (baseLink.startsWith('//')) {
       baseLink = 'https:' + baseLink
     }
-    
+
     try {
       const urlObj = new URL(baseLink)
-      urlObj.searchParams.set('only_episode', 'true')
-      urlObj.searchParams.set('only_translation', 'true')
-      urlObj.searchParams.set('shikimori', String(shId))
-      if (alias) {
-        urlObj.searchParams.set('alias', alias)
-      }
-      if (translationId) {
-        urlObj.searchParams.set('translation_id', String(translationId))
-      }
+      urlObj.hostname = 'kodikplayer.com'
+      // Добавляем метаданные для гостей
+      if (shId) urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) urlObj.searchParams.set('alias', alias)
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
-      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-      changeVideo(fallbackUrl, 'kodik')
+      changeVideo(baseLink, 'kodik')
     }
   }
 }
@@ -543,37 +535,35 @@ async function switchPlayer(type) {
   if (type === 'kodik') {
     const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
     let baseLink = ''
-    if (activeTranslationData.value && activeTranslationData.value.seasons) {
-      const seasons = activeTranslationData.value.seasons
-      for (const sKey in seasons) {
-        if (seasons[sKey].episodes && seasons[sKey].episodes[ep]) {
-          baseLink = seasons[sKey].episodes[ep]
+    
+    // Ищем прямую ссылку на эпизод в данных API
+    if (activeTranslationData.value?.seasons) {
+      for (const sKey in activeTranslationData.value.seasons) {
+        const epLink = activeTranslationData.value.seasons[sKey]?.episodes?.[ep]
+        if (epLink) {
+          baseLink = epLink
           break
         }
       }
     }
     
+    // Если нет — берём serial-уровень ссылку с параметром episode
     if (!baseLink) {
-      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}`
-    } else if (baseLink.startsWith('//')) {
+      baseLink = activeTranslationData.value?.link || `//kodikplayer.com/serial/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}`
+    }
+    
+    if (baseLink.startsWith('//')) {
       baseLink = 'https:' + baseLink
     }
     
     try {
       const urlObj = new URL(baseLink)
-      urlObj.searchParams.set('only_episode', 'true')
-      urlObj.searchParams.set('only_translation', 'true')
-      urlObj.searchParams.set('shikimori', String(shId))
-      if (alias) {
-        urlObj.searchParams.set('alias', alias)
-      }
-      if (translationId) {
-        urlObj.searchParams.set('translation_id', String(translationId))
-      }
+      urlObj.hostname = 'kodikplayer.com'
+      if (shId) urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) urlObj.searchParams.set('alias', alias)
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
-      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-      changeVideo(fallbackUrl, 'kodik')
+      changeVideo(baseLink, 'kodik')
     }
   } else if (type === 'alloha') {
     const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
@@ -582,13 +572,8 @@ async function switchPlayer(type) {
     const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
     
     let url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${ep}`
-    if (transTitle) {
-      url += `&translation=${encodeURIComponent(transTitle)}`
-    }
-    if (translationId) {
-      url += `&translation_id=${translationId}`
-    }
-    url += `&shikimori=${shId}&alias=${alias}`
+    if (transTitle) url += `&translation=${encodeURIComponent(transTitle)}`
+    if (translationId) url += `&translation_id=${translationId}`
     changeVideo(url, 'alloha')
   } else if (type === 'direct') {
     loadingDirect.value = true

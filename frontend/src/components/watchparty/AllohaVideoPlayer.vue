@@ -34,33 +34,22 @@ const props = defineProps({
 })
 
 const mirrors = [
-  'api.alloha.live',
-  'api.allohavn.tv',
-  'api.alloha.tv',
-  'api.allohacdn.com'
+  'api.alloha.live', // Единственное рабочее зеркало
 ]
+
+// Старые / недоступные зеркала — сбрасываем сохранённый выбор
+const BROKEN_MIRRORS = ['api.allohavn.tv', 'api.alloha.tv', 'api.allohacdn.com']
 
 function getInitialMirror() {
   const saved = localStorage.getItem('alloha_mirror')
   if (saved && mirrors.includes(saved)) {
     return saved
   }
-  
-  if (props.url) {
-    try {
-      let tempUrl = props.url
-      if (tempUrl.startsWith('//')) {
-        tempUrl = 'https:' + tempUrl
-      }
-      const parsed = new URL(tempUrl)
-      if (parsed.hostname && parsed.hostname !== 'api.alloha.tv') {
-        const matched = mirrors.find(m => parsed.hostname.includes(m))
-        if (matched) return matched
-      }
-    } catch (e) {}
+  // Если сохранено сломанное зеркало — удаляем
+  if (saved && BROKEN_MIRRORS.includes(saved)) {
+    localStorage.removeItem('alloha_mirror')
   }
-  
-  return 'api.alloha.live' // Default to working mirror
+  return 'api.alloha.live'
 }
 
 const selectedMirror = ref(getInitialMirror())

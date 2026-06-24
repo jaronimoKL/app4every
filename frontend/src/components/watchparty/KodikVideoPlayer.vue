@@ -40,24 +40,31 @@ let isSyncing = false
 let lastTime = 0
 let currentEpisode = null
 
-// Список известных зеркал Kodik
+// Список известных зеркал Kodik (в порядке надёжности)
 const mirrors = [
-  'kodik.info',
-  'aniqit.com',
-  'kodikplayer.com',
+  'kodikplayer.com',  // Основной — всегда работает
   'kodikonline.com',
-  'gbase.site',
   'gbase.online',
+  'gbase.site',
   'baseofplay.club',
   'kinosko.pro',
-  'anivod.pro'
+  'anivod.pro',
+  'aniqit.com',
+  'kodik.info',       // Часто заблокирован провайдерами — в конце
 ]
+
+// Зеркала, которые заведомо не работают — сбрасываем сохранённый выбор
+const BROKEN_MIRRORS = ['kodik.info', 'aniqit.com']
 
 // Получаем начальный домен из ссылки или из localStorage
 function getInitialMirror() {
   const saved = localStorage.getItem('kodik_mirror')
-  if (saved && mirrors.includes(saved)) {
+  if (saved && mirrors.includes(saved) && !BROKEN_MIRRORS.includes(saved)) {
     return saved
+  }
+  // Если сохранено сломанное зеркало — удаляем
+  if (saved && BROKEN_MIRRORS.includes(saved)) {
+    localStorage.removeItem('kodik_mirror')
   }
   
   if (props.url) {
@@ -68,14 +75,14 @@ function getInitialMirror() {
       }
       const parsed = new URL(tempUrl)
       if (parsed.hostname) {
-        // Если домен из ссылки есть в списке, используем его, иначе оставляем дефолтный
-        const matched = mirrors.find(m => parsed.hostname.includes(m))
+        // Если домен из ссылки есть в списке и не сломан — используем его
+        const matched = mirrors.find(m => parsed.hostname.includes(m) && !BROKEN_MIRRORS.includes(m))
         if (matched) return matched
       }
     } catch (e) {}
   }
   
-  return 'kodik.info'
+  return 'kodikplayer.com' // Надёжный дефолт
 }
 
 const selectedMirror = ref(getInitialMirror())
