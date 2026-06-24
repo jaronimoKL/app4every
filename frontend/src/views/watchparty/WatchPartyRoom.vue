@@ -100,7 +100,7 @@
         </div>
 
         <!-- Панель управления сериями и озвучками -->
-        <div class="anime-controls-panel glass animate-fade-in" v-if="!roomState.error && hasAnimeMetadata && (roomState.videoType === 'kodik' || roomState.videoType === 'alloha')">
+        <div class="anime-controls-panel glass animate-fade-in" v-if="!roomState.error && hasAnimeMetadata && (roomState.videoType === 'kodik' || roomState.videoType === 'alloha' || roomState.videoType === 'direct')">
           <div class="panel-header">
             <h3 class="panel-title">⭐ Управление озвучкой и сериями</h3>
             <span v-if="!roomState.isOwner" class="badge-host-controlled">🔒 Управляет создатель комнаты</span>
@@ -248,21 +248,89 @@ const loadingTranslations = ref(false)
 const translationsError = ref(null)
 
 async function fetchRoomTranslations() {
-  if (!currentShikimoriId.value) return
   loadingTranslations.value = true
   translationsError.value = null
-  try {
-    const token = auth.accessToken
-    const res = await fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${currentShikimoriId.value}`, {
+  
+  const token = auth.accessToken
+  let kodikPromise = Promise.resolve([])
+  let anilibriaPromise = Promise.resolve([])
+  
+  if (currentShikimoriId.value) {
+    kodikPromise = fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${currentShikimoriId.value}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
-    if (!res.ok) {
-      throw new Error('Не удалось загрузить список озвучек для этой комнаты')
+    .then(res => res.ok ? res.json() : { results: [] })
+    .then(data => data.results || [])
+    .catch(e => {
+      console.error("Failed to fetch Kodik translations", e)
+      return []
+    })
+  }
+  
+  if (currentAlias.value) {
+    anilibriaPromise = fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${currentAlias.value}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(res => res.ok ? res.json() : { episodes: [] })
+    .then(data => data.episodes || [])
+    .catch(e => {
+      console.error("Failed to fetch Anilibria episodes", e)
+      return []
+    })
+  }
+  
+  try {
+    const [kodikResults, anilibriaEpisodesList] = await Promise.all([kodikPromise, anilibriaPromise])
+    
+    // Sort Anilibria episodes
+    anilibriaEpisodesList.sort((a, b) => {
+      const aNum = parseFloat(a.ordinal ?? a.number) || 0
+      const bNum = parseFloat(b.ordinal ?? b.number) || 0
+      return aNum - bNum
+    })
+    
+    let syntheticAnilibria = null
+    if (anilibriaEpisodesList.length > 0) {
+      const episodesMap = {}
+      anilibriaEpisodesList.forEach(ep => {
+        const epNum = ep.ordinal ?? ep.number
+        const hlsUrl = ep.hls_1080 || ep.hls_720 || ep.hls_480 || ep.hls
+        if (hlsUrl) {
+          episodesMap[String(epNum)] = hlsUrl
+        }
+      })
+      
+      syntheticAnilibria = {
+        id: 'anilibria_api',
+        translation: {
+          id: 'anilibria_api',
+          title: 'AniLibria (API)',
+          type: 'voice'
+        },
+        last_episode: anilibriaEpisodesList.length,
+        episodes_count: anilibriaEpisodesList.length,
+        seasons: {
+          "1": {
+            episodes: episodesMap
+          }
+        },
+        isAnilibriaApi: true
+      }
     }
-    const data = await res.json()
-    roomTranslations.value = data.results || []
+    
+    const allTranslations = []
+    if (syntheticAnilibria) {
+      allTranslations.push(syntheticAnilibria)
+    }
+    if (kodikResults.length > 0) {
+      allTranslations.push(...kodikResults)
+    }
+    
+    roomTranslations.value = allTranslations
   } catch (e) {
     console.error(e)
     translationsError.value = e.message
@@ -271,10 +339,8 @@ async function fetchRoomTranslations() {
   }
 }
 
-watch(currentShikimoriId, (newId) => {
-  if (newId) {
-    fetchRoomTranslations()
-  }
+watch([currentShikimoriId, currentAlias], () => {
+  fetchRoomTranslations()
 })
 
 const currentTranslationId = computed(() => {
@@ -366,10 +432,30 @@ function onTranslationSelect(t) {
     baseLink = t.link || ''
   }
 
+  // Если всё ещё нет ссылки — используем serial-уровень link
+  if (!baseLink) {
+    baseLink = t.link || ''
+  }
+
   const shId = currentShikimoriId.value
   const alias = currentAlias.value
   
-  if (roomState.videoType === 'alloha') {
+  if (t.isAnilibriaApi) {
+    if (baseLink) {
+      try {
+        const urlObj = new URL(baseLink)
+        urlObj.searchParams.set('shikimori', shId)
+        urlObj.searchParams.set('alias', alias)
+        urlObj.searchParams.set('episode', String(targetEp))
+        urlObj.searchParams.set('translation_id', 'anilibria_api')
+        changeVideo(urlObj.toString(), 'direct')
+      } catch (e) {
+        changeVideo(baseLink, 'direct')
+      }
+    } else {
+      alert('Поток Anilibria не найден для этой серии')
+    }
+  } else if (roomState.videoType === 'alloha') {
     const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
     const url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${targetEp}&translation=${encodeURIComponent(t.translation.title)}&translation_id=${t.translation.id}`
     changeVideo(url, 'alloha')
@@ -385,6 +471,7 @@ function onTranslationSelect(t) {
       // Добавляем метаданные для гостей (плеер Kodik игнорирует неизвестные параметры)
       if (shId) urlObj.searchParams.set('shikimori', String(shId))
       if (alias) urlObj.searchParams.set('alias', alias)
+      if (t.translation.id) urlObj.searchParams.set('translation_id', String(t.translation.id))
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
       changeVideo(baseLink, 'kodik')
@@ -399,8 +486,25 @@ function onEpisodeSelect(episodeNum) {
   const alias = currentAlias.value
   const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
 
-  if (roomState.videoType === 'alloha') {
-    const activeTrans = activeTranslationData.value
+  const activeTrans = activeTranslationData.value
+  
+  if (activeTrans?.isAnilibriaApi) {
+    const baseLink = activeTrans.seasons["1"]?.episodes?.[episodeNum]
+    if (baseLink) {
+      try {
+        const urlObj = new URL(baseLink)
+        urlObj.searchParams.set('shikimori', shId)
+        urlObj.searchParams.set('alias', alias)
+        urlObj.searchParams.set('episode', String(episodeNum))
+        urlObj.searchParams.set('translation_id', 'anilibria_api')
+        changeVideo(urlObj.toString(), 'direct')
+      } catch (e) {
+        changeVideo(baseLink, 'direct')
+      }
+    } else {
+      alert(`Серия ${episodeNum} не найдена в Anilibria API`)
+    }
+  } else if (roomState.videoType === 'alloha') {
     const transTitle = activeTrans ? activeTrans.translation.title : ''
     const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
     
@@ -438,6 +542,7 @@ function onEpisodeSelect(episodeNum) {
       // Добавляем метаданные для гостей
       if (shId) urlObj.searchParams.set('shikimori', String(shId))
       if (alias) urlObj.searchParams.set('alias', alias)
+      if (translationId) urlObj.searchParams.set('translation_id', String(translationId))
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
       changeVideo(baseLink, 'kodik')
@@ -561,6 +666,7 @@ async function switchPlayer(type) {
       urlObj.hostname = 'kodikplayer.com'
       if (shId) urlObj.searchParams.set('shikimori', String(shId))
       if (alias) urlObj.searchParams.set('alias', alias)
+      if (translationId) urlObj.searchParams.set('translation_id', String(translationId))
       changeVideo(urlObj.toString(), 'kodik')
     } catch (e) {
       changeVideo(baseLink, 'kodik')
@@ -576,41 +682,54 @@ async function switchPlayer(type) {
     if (translationId) url += `&translation_id=${translationId}`
     changeVideo(url, 'alloha')
   } else if (type === 'direct') {
-    loadingDirect.value = true
-    try {
-      // Запрашиваем список серий из Anilibria для данного алиаса
-      const token = auth.accessToken
-      const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${alias}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      const data = await res.json()
-      const episodes = data.episodes || []
-      
-      // Ищем эпизод, соответствующий текущему номеру серии
-      const foundEp = episodes.find(e => (e.ordinal ?? e.number) == ep)
-      if (foundEp) {
-        const hlsUrl = foundEp.hls_1080 || foundEp.hls_720 || foundEp.hls_480 || foundEp.hls
-        if (hlsUrl) {
-          // Сохраняем метаданные в параметрах прямого URL
-          const urlObj = new URL(hlsUrl)
-          urlObj.searchParams.set('shikimori', shId)
-          urlObj.searchParams.set('alias', alias)
-          urlObj.searchParams.set('episode', ep)
-          
-          changeVideo(urlObj.toString(), 'direct')
-        } else {
-          alert('Прямой HLS-поток для этой серии не найден.')
-        }
-      } else {
-        alert(`Серия ${ep} не найдена в базе Anilibria.`)
+    const anilibriaTrans = roomTranslations.value.find(t => t.isAnilibriaApi)
+    const epLink = anilibriaTrans?.seasons?.["1"]?.episodes?.[ep]
+    
+    if (epLink) {
+      try {
+        const urlObj = new URL(epLink)
+        urlObj.searchParams.set('shikimori', shId)
+        urlObj.searchParams.set('alias', alias)
+        urlObj.searchParams.set('episode', String(ep))
+        urlObj.searchParams.set('translation_id', 'anilibria_api')
+        changeVideo(urlObj.toString(), 'direct')
+      } catch (e) {
+        changeVideo(epLink, 'direct')
       }
-    } catch (e) {
-      console.error('Failed to switch to direct player', e)
-      alert('Не удалось переключиться на прямой плеер.')
-    } finally {
-      loadingDirect.value = false
+    } else {
+      loadingDirect.value = true
+      try {
+        const token = auth.accessToken
+        const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${alias}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        const data = await res.json()
+        const episodes = data.episodes || []
+        
+        const foundEp = episodes.find(e => (e.ordinal ?? e.number) == ep)
+        if (foundEp) {
+          const hlsUrl = foundEp.hls_1080 || foundEp.hls_720 || foundEp.hls_480 || foundEp.hls
+          if (hlsUrl) {
+            const urlObj = new URL(hlsUrl)
+            urlObj.searchParams.set('shikimori', shId)
+            urlObj.searchParams.set('alias', alias)
+            urlObj.searchParams.set('episode', String(ep))
+            urlObj.searchParams.set('translation_id', 'anilibria_api')
+            changeVideo(urlObj.toString(), 'direct')
+          } else {
+            alert('Прямой HLS-поток для этой серии не найден.')
+          }
+        } else {
+          alert(`Серия ${ep} не найдена в базе Anilibria.`)
+        }
+      } catch (e) {
+        console.error('Failed to switch to direct player', e)
+        alert('Не удалось переключиться на прямой плеер.')
+      } finally {
+        loadingDirect.value = false
+      }
     }
   }
 }

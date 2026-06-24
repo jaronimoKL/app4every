@@ -202,50 +202,105 @@ const filteredLegacyEpisodes = computed(() => {
 onMounted(async () => {
   const auth = useAuthStore()
   loading.value = true
+  error.value = null
+  
+  let kodikPromise = Promise.resolve([])
+  let anilibriaPromise = Promise.resolve([])
   
   if (props.shikimoriId) {
-    // 1. Поиск озвучек через Kodik
-    try {
-      const res = await fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${props.shikimoriId}`, {
-        headers: {
-          'Authorization': `Bearer ${auth.accessToken}`
-        }
-      })
-      if (!res.ok) {
-        throw new Error('Не удалось загрузить базу озвучек')
+    kodikPromise = fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${props.shikimoriId}`, {
+      headers: {
+        'Authorization': `Bearer ${auth.accessToken}`
       }
-      const data = await res.json()
-      translations.value = data.results || []
-      
-      if (translations.value.length > 0) {
-        // По умолчанию выбираем первую озвучку
-        selectedTranslation.value = voiceTranslations.value[0] || translations.value[0]
-      }
-    } catch (e) {
-      console.error(e)
-      error.value = e.message
-    }
-  } else if (props.alias) {
-    // 2. Легаси поиск через AniLiberty
-    try {
-      const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${props.alias}`, {
-        headers: {
-          'Authorization': `Bearer ${auth.accessToken}`
-        }
-      })
-      const data = await res.json()
-      externalPlayerUrl.value = data.external_player || ''
-      legacyEpisodes.value = data.episodes || []
-      legacyEpisodes.value.sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
-    } catch (e) {
-      console.error("Failed to fetch AniLiberty episodes", e)
-      error.value = "Ошибка при загрузке эпизодов Anilibria"
-    }
-  } else {
-    error.value = "Отсутствует ID аниме для поиска"
+    })
+    .then(res => res.ok ? res.json() : { results: [] })
+    .then(data => data.results || [])
+    .catch(e => {
+      console.error("Failed to fetch Kodik translations", e)
+      return []
+    })
   }
   
-  loading.value = false
+  if (props.alias) {
+    anilibriaPromise = fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${props.alias}`, {
+      headers: {
+        'Authorization': `Bearer ${auth.accessToken}`
+      }
+    })
+    .then(res => res.ok ? res.json() : { episodes: [] })
+    .then(data => data.episodes || [])
+    .catch(e => {
+      console.error("Failed to fetch Anilibria episodes", e)
+      return []
+    })
+  }
+  
+  try {
+    const [kodikResults, anilibriaEpisodesList] = await Promise.all([kodikPromise, anilibriaPromise])
+    
+    // Sort Anilibria episodes
+    anilibriaEpisodesList.sort((a, b) => {
+      const aNum = parseFloat(a.ordinal ?? a.number) || 0
+      const bNum = parseFloat(b.ordinal ?? b.number) || 0
+      return aNum - bNum
+    })
+    
+    // Construct synthetic translation for Anilibria API if episodes are found
+    let syntheticAnilibria = null
+    if (anilibriaEpisodesList.length > 0) {
+      legacyEpisodes.value = anilibriaEpisodesList
+      
+      const episodesMap = {}
+      anilibriaEpisodesList.forEach(ep => {
+        const epNum = ep.ordinal ?? ep.number
+        const hlsUrl = ep.hls_1080 || ep.hls_720 || ep.hls_480 || ep.hls
+        if (hlsUrl) {
+          episodesMap[String(epNum)] = hlsUrl
+        }
+      })
+      
+      syntheticAnilibria = {
+        id: 'anilibria_api',
+        translation: {
+          id: 'anilibria_api',
+          title: 'AniLibria (API)',
+          type: 'voice'
+        },
+        last_episode: anilibriaEpisodesList.length,
+        episodes_count: anilibriaEpisodesList.length,
+        seasons: {
+          "1": {
+            episodes: episodesMap
+          }
+        },
+        isAnilibriaApi: true
+      }
+    }
+    
+    // Combine translations
+    const allTranslations = []
+    if (syntheticAnilibria) {
+      allTranslations.push(syntheticAnilibria)
+    }
+    if (kodikResults.length > 0) {
+      allTranslations.push(...kodikResults)
+    }
+    
+    translations.value = allTranslations
+    
+    if (translations.value.length > 0) {
+      // Prefer Anilibria (API) as default if available, otherwise Kodik's first voice translation
+      const defaultTrans = translations.value.find(t => t.id === 'anilibria_api') || voiceTranslations.value[0] || translations.value[0]
+      selectedTranslation.value = defaultTrans
+    } else {
+      error.value = "Видео-материалы не найдены"
+    }
+  } catch (e) {
+    console.error(e)
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
 })
 
 function selectTranslation(t) {
@@ -269,6 +324,7 @@ function onEpisodeClick(ep) {
     urlObj.searchParams.set('only_episode', 'true')
     urlObj.searchParams.set('only_translation', 'true')
     urlObj.searchParams.set('shikimori', String(props.shikimoriId))
+    urlObj.searchParams.set('episode', String(ep.number))
     if (props.alias) {
       urlObj.searchParams.set('alias', props.alias)
     }
