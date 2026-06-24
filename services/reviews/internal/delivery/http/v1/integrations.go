@@ -191,3 +191,53 @@ func (h *IntegrationHandler) AnilibertyProxy(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+func (h *IntegrationHandler) KodikSearch(w http.ResponseWriter, r *http.Request) {
+	shikimoriID := r.URL.Query().Get("shikimori_id")
+	if shikimoriID == "" {
+		http.Error(w, `{"error":"missing shikimori_id parameter"}`, http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	cacheKey := fmt.Sprintf("kodik:search:%s", shikimoriID)
+
+	// Try cache
+	if cached, err := h.redis.Get(ctx, cacheKey).Result(); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(cached))
+		return
+	}
+
+	// Fetch from Kodik
+	// Use the working token: a0457eb45312af80bbb9f3fb33de3e93
+	searchURL := fmt.Sprintf("https://kodik-api.com/search?token=a0457eb45312af80bbb9f3fb33de3e93&shikimori_id=%s&with_episodes=true", url.QueryEscape(shikimoriID))
+	req, err := http.NewRequestWithContext(ctx, "GET", searchURL, nil)
+	if err != nil {
+		http.Error(w, `{"error":"request creation failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, `{"error":"request failed"}`, http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, `{"error":"read body failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		// Cache for 2 hours (anime search updates are rare, and this saves API limits)
+		h.redis.Set(ctx, cacheKey, string(body), 2*time.Hour)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
+}
+
+

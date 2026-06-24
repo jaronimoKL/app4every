@@ -57,8 +57,105 @@
             @local-seek="onLocalSeek"
             @local-episode-change="onLocalEpisodeChange"
           />
+          <AllohaVideoPlayer
+            v-else-if="roomState.videoType === 'alloha' && !roomState.error"
+            ref="playerRef"
+            :url="roomState.videoUrl"
+            @local-play="onLocalPlay"
+            @local-pause="onLocalPause"
+            @local-seek="onLocalSeek"
+          />
           <div v-else-if="!roomState.error" class="empty-player">
             Видео не выбрано
+          </div>
+        </div>
+
+        <!-- Панель переключения источников (доступна владельцу для аниме) -->
+        <div class="player-selector glass" v-if="roomState.isOwner && !roomState.error && hasAnimeMetadata">
+          <span class="selector-label">📺 Плеер:</span>
+          <div class="selector-buttons">
+            <button 
+              class="selector-btn" 
+              :class="{ active: roomState.videoType === 'kodik' }"
+              @click="switchPlayer('kodik')"
+            >
+              🎬 Kodik (Все озвучки)
+            </button>
+            <button 
+              class="selector-btn" 
+              :class="{ active: roomState.videoType === 'alloha' }"
+              @click="switchPlayer('alloha')"
+            >
+              🍿 Alloha (Зеркало)
+            </button>
+            <button 
+              class="selector-btn" 
+              :class="{ active: roomState.videoType === 'direct' }"
+              @click="switchPlayer('direct')"
+              :disabled="loadingDirect"
+            >
+              ⚡ Anilibria {{ loadingDirect ? '(Загрузка...)' : '' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Панель управления сериями и озвучками -->
+        <div class="anime-controls-panel glass animate-fade-in" v-if="!roomState.error && hasAnimeMetadata">
+          <div class="panel-header">
+            <h3 class="panel-title">⭐ Управление озвучкой и сериями</h3>
+            <span v-if="!roomState.isOwner" class="badge-host-controlled">🔒 Управляет создатель комнаты</span>
+          </div>
+
+          <div class="panel-body">
+            <!-- Состояние загрузки -->
+            <div v-if="loadingTranslations" class="loading-state">
+              <div class="spinner-small"></div>
+              <span>Загрузка доступных озвучек...</span>
+            </div>
+            <div v-else-if="translationsError" class="error-state">
+              ⚠️ {{ translationsError }}
+            </div>
+            <template v-else>
+              <!-- Выбор перевода -->
+              <div class="control-row">
+                <span class="control-label">🎙️ Озвучка / Перевод:</span>
+                <div class="translations-scroll">
+                  <button
+                    v-for="t in roomTranslations"
+                    :key="t.id"
+                    class="trans-pill-btn"
+                    :class="{ 
+                      active: currentTranslationId == t.translation.id,
+                      disabled: !roomState.isOwner
+                    }"
+                    :disabled="!roomState.isOwner"
+                    @click="onTranslationSelect(t)"
+                  >
+                    {{ t.translation.title }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Выбор серии -->
+              <div class="control-row mt-3">
+                <span class="control-label">🎬 Выбор серии (всего {{ episodesCountForActiveTranslation }}):</span>
+                <div class="episodes-scroll-grid">
+                  <button
+                    v-for="ep in episodesListForActiveTranslation"
+                    :key="ep"
+                    class="ep-pill-btn"
+                    :class="{ 
+                      active: currentEpisode == ep,
+                      disabled: !roomState.isOwner
+                    }"
+                    :disabled="!roomState.isOwner"
+                    @click="onEpisodeSelect(ep)"
+                  >
+                    {{ ep }}
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -107,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWatchParty } from '@/composables/useWatchParty'
@@ -115,6 +212,7 @@ import YouTubePlayer from '@/components/watchparty/YouTubePlayer.vue'
 import DirectVideoPlayer from '@/components/watchparty/DirectVideoPlayer.vue'
 import RutubePlayer from '@/components/watchparty/RutubePlayer.vue'
 import KodikVideoPlayer from '@/components/watchparty/KodikVideoPlayer.vue'
+import AllohaVideoPlayer from '@/components/watchparty/AllohaVideoPlayer.vue'
 
 const route = useRoute()
 const roomId = route.params.roomId
@@ -134,12 +232,188 @@ const {
 } = useWatchParty()
 
 const editUrl = ref('')
+const loadingDirect = ref(false)
+
+// Метаданные аниме, извлекаемые из sessionStorage или URL
+const currentShikimoriId = ref(sessionStorage.getItem(`wp_shikimori_${roomId}`) || '')
+const currentAlias = ref(sessionStorage.getItem(`wp_alias_${roomId}`) || '')
+
+const hasAnimeMetadata = computed(() => {
+  return currentShikimoriId.value !== ''
+})
+
+// Кастомное управление озвучками и сериями для Kodik
+const roomTranslations = ref([])
+const loadingTranslations = ref(false)
+const translationsError = ref(null)
+
+async function fetchRoomTranslations() {
+  if (!currentShikimoriId.value) return
+  loadingTranslations.value = true
+  translationsError.value = null
+  try {
+    const token = auth.accessToken
+    const res = await fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${currentShikimoriId.value}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    if (!res.ok) {
+      throw new Error('Не удалось загрузить список озвучек для этой комнаты')
+    }
+    const data = await res.json()
+    roomTranslations.value = data.results || []
+  } catch (e) {
+    console.error(e)
+    translationsError.value = e.message
+  } finally {
+    loadingTranslations.value = false
+  }
+}
+
+watch(currentShikimoriId, (newId) => {
+  if (newId) {
+    fetchRoomTranslations()
+  }
+})
+
+const currentTranslationId = computed(() => {
+  if (!roomState.videoUrl) return ''
+  try {
+    let url = roomState.videoUrl
+    if (url.startsWith('//')) {
+      url = window.location.protocol + url
+    }
+    const urlObj = new URL(url)
+    return urlObj.searchParams.get('translation_id') || ''
+  } catch (e) {
+    return ''
+  }
+})
+
+const activeTranslationData = computed(() => {
+  if (roomTranslations.value.length === 0) return null
+  if (currentTranslationId.value) {
+    const found = roomTranslations.value.find(t => t.translation.id == currentTranslationId.value)
+    if (found) return found
+  }
+  return roomTranslations.value[0]
+})
+
+const episodesCountForActiveTranslation = computed(() => {
+  if (!activeTranslationData.value) return 0
+  return activeTranslationData.value.last_episode || activeTranslationData.value.episodes_count || 1
+})
+
+const episodesListForActiveTranslation = computed(() => {
+  if (!activeTranslationData.value) return []
+  
+  const list = []
+  const seasons = activeTranslationData.value.seasons || {}
+  
+  const sortedSeasonKeys = Object.keys(seasons).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+  
+  for (const sKey of sortedSeasonKeys) {
+    const season = seasons[sKey]
+    const episodes = season.episodes || {}
+    const sortedEpisodeKeys = Object.keys(episodes).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+    for (const epKey of sortedEpisodeKeys) {
+      list.push(parseInt(epKey, 10))
+    }
+  }
+  
+  if (list.length === 0) {
+    const count = episodesCountForActiveTranslation.value
+    for (let i = 1; i <= count; i++) {
+      list.push(i)
+    }
+  }
+  
+  return list
+})
+
+function onTranslationSelect(t) {
+  if (!roomState.isOwner) return
+  
+  let targetEp = currentEpisode.value
+  const seasons = t.seasons || {}
+  let hasEp = false
+  for (const sKey in seasons) {
+    if (seasons[sKey].episodes && seasons[sKey].episodes[targetEp]) {
+      hasEp = true
+      break
+    }
+  }
+  
+  if (!hasEp && t.last_episode && targetEp > t.last_episode) {
+    targetEp = 1
+  }
+
+  const shId = currentShikimoriId.value
+  const alias = currentAlias.value
+  const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+  
+  changeVideo(url, 'kodik')
+}
+
+function onEpisodeSelect(episodeNum) {
+  if (!roomState.isOwner) return
+  
+  const shId = currentShikimoriId.value
+  const alias = currentAlias.value
+  const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
+
+  const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+  
+  changeVideo(url, 'kodik')
+}
+
+// Извлекаем номер текущей серии из URL
+const currentEpisode = computed(() => {
+  if (!roomState.videoUrl) return 1
+  try {
+    let url = roomState.videoUrl
+    if (url.startsWith('//')) {
+      url = window.location.protocol + url
+    }
+    const urlObj = new URL(url)
+    return parseInt(urlObj.searchParams.get('episode') || '1', 10)
+  } catch (e) {
+    return 1
+  }
+})
+
+// Парсинг метаданных из URL (позволяет гостям получать ID аниме и алиас из ссылки хоста)
+function extractMetadataFromUrl(url) {
+  if (!url) return
+  try {
+    let cleanUrl = url
+    if (cleanUrl.startsWith('//')) {
+      cleanUrl = window.location.protocol + cleanUrl
+    }
+    const urlObj = new URL(cleanUrl)
+    const shId = urlObj.searchParams.get('shikimori') || urlObj.searchParams.get('shikimori_id')
+    const al = urlObj.searchParams.get('alias')
+    
+    if (shId && !currentShikimoriId.value) {
+      currentShikimoriId.value = shId
+    }
+    if (al && !currentAlias.value) {
+      currentAlias.value = al
+    }
+  } catch (e) {}
+}
+
+watch(() => roomState.videoUrl, (newUrl) => {
+  extractMetadataFromUrl(newUrl)
+})
 
 function detectVideoType(url) {
   if (!url) return ''
   if (/youtube\.com|youtu\.be/.test(url)) return 'youtube'
   if (/rutube\.ru/.test(url)) return 'rutube'
   if (/kodik|aniqit/i.test(url)) return 'kodik'
+  if (/alloha\.tv/i.test(url)) return 'alloha'
   if (/\.(mp4|webm|ogg|m3u8)(\?|$)/i.test(url)) return 'direct'
   return 'unknown'
 }
@@ -157,7 +431,6 @@ function onLocalEpisodeChange(episodeNum) {
     let url = roomState.videoUrl
     if (!url) return
 
-    // Добавляем схему протокола, если ссылка относительная
     if (url.startsWith('//')) {
       url = window.location.protocol + url
     }
@@ -166,12 +439,67 @@ function onLocalEpisodeChange(episodeNum) {
     urlObj.searchParams.set('episode', episodeNum)
     const newUrl = urlObj.toString()
 
-    // Меняем видео для всей комнаты только если оно действительно изменилось
     if (newUrl !== roomState.videoUrl) {
-      changeVideo(newUrl, 'kodik')
+      changeVideo(newUrl, detectVideoType(newUrl))
     }
   } catch (e) {
     console.error('Failed to change episode via owner action', e)
+  }
+}
+
+// Метод переключения плеера хостом
+async function switchPlayer(type) {
+  if (!roomState.isOwner) return
+  
+  const shId = currentShikimoriId.value
+  const alias = currentAlias.value
+  const ep = currentEpisode.value
+  
+  if (type === 'kodik') {
+    const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
+    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+    changeVideo(url, 'kodik')
+  } else if (type === 'alloha') {
+    // Формируем URL Alloha по Shikimori ID (используем публичный токен)
+    const url = `https://api.alloha.tv/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${ep}&shikimori=${shId}&alias=${alias}`
+    changeVideo(url, 'alloha')
+  } else if (type === 'direct') {
+    loadingDirect.value = true
+    try {
+      // Запрашиваем список серий из Anilibria для данного алиаса
+      const token = auth.accessToken
+      const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${alias}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      const episodes = data.episodes || []
+      
+      // Ищем эпизод, соответствующий текущему номеру серии
+      const foundEp = episodes.find(e => (e.ordinal ?? e.number) == ep)
+      if (foundEp) {
+        const hlsUrl = foundEp.hls_1080 || foundEp.hls_720 || foundEp.hls_480 || foundEp.hls
+        if (hlsUrl) {
+          // Сохраняем метаданные в параметрах прямого URL
+          const urlObj = new URL(hlsUrl)
+          urlObj.searchParams.set('shikimori', shId)
+          urlObj.searchParams.set('alias', alias)
+          urlObj.searchParams.set('episode', ep)
+          
+          changeVideo(urlObj.toString(), 'direct')
+        } else {
+          alert('Прямой HLS-поток для этой серии не найден.')
+        }
+      } else {
+        alert(`Серия ${ep} не найдена в базе Anilibria.`)
+      }
+    } catch (e) {
+      console.error('Failed to switch to direct player', e)
+      alert('Не удалось переключиться на прямой плеер.')
+    } finally {
+      loadingDirect.value = false
+    }
   }
 }
 
@@ -184,10 +512,15 @@ onMounted(() => {
   const token = auth.accessToken
   connect(roomId, token)
 
+  if (currentShikimoriId.value) {
+    fetchRoomTranslations()
+  }
+
   // Check if we just created it with an initial URL
   const initialUrl = sessionStorage.getItem(`wp_url_${roomId}`)
   if (initialUrl) {
     sessionStorage.removeItem(`wp_url_${roomId}`)
+    extractMetadataFromUrl(initialUrl)
     // We wait a bit for connection to establish and check if we are owner
     setTimeout(() => {
       if (roomState.isOwner) {
@@ -331,6 +664,56 @@ onMounted(() => {
   border-radius: 8px;
   z-index: 10;
   font-size: 0.9rem;
+}
+
+/* Панель выбора плеера */
+.player-selector {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 20px;
+  border-radius: 12px;
+}
+
+.selector-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+}
+
+.selector-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selector-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.selector-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.selector-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--violet));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+}
+.selector-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .url-control {
@@ -487,5 +870,168 @@ h3 {
 .glass {
   background: rgba(255, 255, 255, 0.02) !important;
   backdrop-filter: blur(24px) !important;
+}
+
+/* Стили кастомной панели управления аниме */
+.anime-controls-panel {
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+
+.panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.badge-host-controlled {
+  font-size: 0.75rem;
+  color: rgba(245, 158, 11, 0.95);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.loading-state, .error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary, #6366f1);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.translations-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.translations-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.translations-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.trans-pill-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.trans-pill-btn:not(.disabled):hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+.trans-pill-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+.trans-pill-btn.disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.episodes-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.episodes-scroll-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.episodes-scroll-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.ep-pill-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #fff;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.ep-pill-btn:not(.disabled):hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
+}
+.ep-pill-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.7);
+  color: #fff;
+}
+.ep-pill-btn.disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
 }
 </style>

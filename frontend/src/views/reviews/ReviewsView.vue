@@ -167,14 +167,14 @@
                 🔗 {{ link.label || 'Ссылка' }}
               </a>
               <button
-                v-if="rev.aniliberty_alias || (rev.links && rev.links.length > 0)"
+                v-if="rev.shikimori_id || rev.aniliberty_alias || (rev.links && rev.links.length > 0)"
                 class="watch-together-btn"
                 @click.stop="handleWatchTogether(rev)"
               >
                 📺 Смотреть вместе
               </button>
             </div>
-            <div class="card-links" v-else-if="rev.aniliberty_alias" @click.stop>
+            <div class="card-links" v-else-if="rev.shikimori_id || rev.aniliberty_alias" @click.stop>
               <button
                 class="watch-together-btn"
                 @click.stop="handleWatchTogether(rev)"
@@ -386,6 +386,7 @@
     <EpisodePickerModal 
       v-if="showEpisodePicker"
       :alias="activeAlias"
+      :shikimori-id="activeShikimoriId"
       @close="showEpisodePicker = false"
       @select="onEpisodeSelect"
     />
@@ -786,11 +787,13 @@ function generateUUID() {
 }
 
 const activeAlias = ref(null)
+const activeShikimoriId = ref(null)
 const showEpisodePicker = ref(false)
 
 function handleWatchTogether(rev) {
-  if (rev.aniliberty_alias) {
-    activeAlias.value = rev.aniliberty_alias
+  activeShikimoriId.value = rev.shikimori_id || null
+  activeAlias.value = rev.aniliberty_alias || null
+  if (rev.shikimori_id || rev.aniliberty_alias) {
     showEpisodePicker.value = true
   } else if (rev.links && rev.links.length > 0) {
     openWatchParty(rev.links[0].url)
@@ -799,12 +802,18 @@ function handleWatchTogether(rev) {
 
 function onEpisodeSelect(url) {
   showEpisodePicker.value = false
-  openWatchParty(url)
+  openWatchParty(url, activeShikimoriId.value, activeAlias.value)
 }
 
-function openWatchParty(videoUrl) {
+function openWatchParty(videoUrl, shikimoriId, alias) {
   const roomId = generateUUID()
   sessionStorage.setItem(`wp_url_${roomId}`, videoUrl)
+  if (shikimoriId) {
+    sessionStorage.setItem(`wp_shikimori_${roomId}`, shikimoriId)
+  }
+  if (alias) {
+    sessionStorage.setItem(`wp_alias_${roomId}`, alias)
+  }
   router.push(`/watch/room/${roomId}`).catch(err => {
     console.error('Router push error:', err)
     window.location.href = `/watch/room/${roomId}`

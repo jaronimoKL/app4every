@@ -1,78 +1,110 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-box glass" style="max-width: 500px; width: 100%;">
+    <div class="modal-box glass animate-fade-in" style="max-width: 600px; width: 100%;">
       <div class="modal-header">
-        <h3 class="modal-title">Выберите эпизод</h3>
+        <h3 class="modal-title">📺 Выберите озвучку и серию</h3>
         <button class="modal-close" @click="$emit('close')">✕</button>
       </div>
 
-      <div class="modal-body" style="padding: 20px;">
-        <div v-if="loading" class="text-center py-6 text-secondary">
-          Загрузка эпизодов...
+      <div class="modal-body" style="padding: 20px; max-height: 75vh; overflow-y: auto;">
+        <div v-if="loading" class="flex flex-col items-center justify-center py-12 text-secondary">
+          <div class="spinner mb-4"></div>
+          <div>Загрузка озвучек и серий...</div>
         </div>
-        <div v-else-if="episodes.length === 0" class="text-center py-6 text-secondary">
+
+        <div v-else-if="error" class="text-center py-6 text-red-400">
+          ⚠️ {{ error }}
+        </div>
+
+        <div v-else-if="!shikimoriId && legacyEpisodes.length === 0" class="text-center py-6 text-secondary">
           Эпизоды не найдены
         </div>
-        <div v-else class="flex flex-col gap-4">
-          
-          <!-- Поиск по номеру серии, если больше 26 эпизодов -->
-          <div v-if="episodes.length > 26" class="form-group mb-2">
+
+        <div v-else-if="shikimoriId && translations.length === 0" class="text-center py-6 text-secondary">
+          Не найдено видео-материалов в базе Kodik
+        </div>
+
+        <div v-else class="flex flex-col gap-5">
+          <!-- БЛОК 1: Выбор озвучки (для Kodik) -->
+          <div v-if="shikimoriId" class="translation-section">
+            <h4 class="section-title">🎙️ Выберите перевод / озвучку:</h4>
+            
+            <!-- Озвучка -->
+            <div v-if="voiceTranslations.length > 0" class="translation-group mb-4">
+              <span class="group-label">Голосовая озвучка:</span>
+              <div class="translation-grid mt-2">
+                <button
+                  v-for="t in voiceTranslations"
+                  :key="t.id"
+                  class="trans-btn"
+                  :class="{ 'active': selectedTranslation && selectedTranslation.id === t.id }"
+                  @click="selectTranslation(t)"
+                >
+                  <span class="trans-icon">🎙️</span>
+                  <span class="trans-name">{{ t.translation.title }}</span>
+                  <span class="trans-badge">{{ t.last_episode }} сер.</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Субтитры -->
+            <div v-if="subTranslations.length > 0" class="translation-group">
+              <span class="group-label">Субтитры:</span>
+              <div class="translation-grid mt-2">
+                <button
+                  v-for="t in subTranslations"
+                  :key="t.id"
+                  class="trans-btn sub-type"
+                  :class="{ 'active': selectedTranslation && selectedTranslation.id === t.id }"
+                  @click="selectTranslation(t)"
+                >
+                  <span class="trans-icon">📝</span>
+                  <span class="trans-name">{{ t.translation.title }}</span>
+                  <span class="trans-badge">{{ t.last_episode }} сер.</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- БЛОК 2: Поиск по номеру серии (если серий много) -->
+          <div v-if="episodesList.length > 12" class="search-section">
             <input 
               v-model="searchQuery" 
               type="text" 
-              class="form-input" 
+              class="form-input search-input" 
               placeholder="Поиск по номеру серии..." 
             />
           </div>
 
-          <div class="episodes-list">
-            <button 
-              v-for="ep in filteredEpisodes" 
-              :key="ep.id"
-              class="ep-row-btn"
-              :class="{ 'active': selectedEpisode && selectedEpisode.id === ep.id }"
-              @click="selectEpisode(ep)"
-            >
-              <div class="ep-num">Эпизод {{ ep.ordinal ?? ep.number }}</div>
-              <div class="ep-name">{{ ep.name || ep.name_english || `Серия ${ep.ordinal ?? ep.number}` }}</div>
-            </button>
-          </div>
-
-          <!-- Выбор качества / плеера если эпизод выбран -->
-          <div v-if="selectedEpisode" class="mt-2 pt-4 border-t border-white/10">
-            <!-- Кнопка для запуска Kodik плеера (приоритетный вариант с озвучками) -->
-            <div v-if="externalPlayerUrl" class="mb-4">
+          <!-- БЛОК 3: Выбор эпизода -->
+          <div class="episodes-section">
+            <h4 class="section-title">🎬 Эпизод:</h4>
+            <div class="episodes-grid mt-2">
               <button 
-                class="btn btn-primary w-full py-3"
-                style="justify-content: center;"
-                @click="selectKodik(selectedEpisode.ordinal ?? selectedEpisode.number)"
+                v-for="ep in filteredEpisodes" 
+                :key="ep.number"
+                class="ep-grid-btn"
+                @click="onEpisodeClick(ep)"
               >
-                🎬 Смотреть через Kodik (Все озвучки)
+                <div class="ep-num">{{ ep.number }}</div>
+                <div class="ep-desc">серия</div>
               </button>
             </div>
+          </div>
 
-            <h4 class="font-bold text-sm mb-3 text-white">Прямой поток (Anilibria):</h4>
-            <div class="flex flex-wrap gap-2">
-              <button v-if="selectedEpisode.hls" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls)">По умолчанию</button>
-              <button v-if="selectedEpisode.hls_1080" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_1080)">1080p</button>
-              <button v-if="selectedEpisode.hls_720" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_720)">720p</button>
-              <button v-if="selectedEpisode.hls_480" class="btn btn-outline btn-sm" @click="selectQuality(selectedEpisode.hls_480)">480p</button>
-              
-              <!-- Запасной вариант -->
-              <template v-if="!selectedEpisode.hls && !selectedEpisode.hls_1080 && !selectedEpisode.hls_720 && !selectedEpisode.hls_480">
-                <button 
-                  v-for="(val, key) in hlsLinks(selectedEpisode)" 
-                  :key="key"
-                  class="btn btn-outline btn-sm"
-                  @click="selectQuality(val)"
-                >
-                  {{ formatKey(key) }}
-                </button>
-              </template>
-            </div>
-            
-            <div v-if="!externalPlayerUrl && !selectedEpisode.hls && !selectedEpisode.hls_1080 && !selectedEpisode.hls_720 && !selectedEpisode.hls_480 && Object.keys(hlsLinks(selectedEpisode)).length === 0" class="text-sm text-red-400 mt-2">
-              К сожалению, видео-ссылок не найдено.
+          <!-- Легаси поток Anilibria (если есть alias и нет shikimoriId) -->
+          <div v-if="!shikimoriId && legacyEpisodes.length > 0" class="legacy-section">
+            <h4 class="section-title">⚡ Поток Anilibria:</h4>
+            <div class="episodes-grid mt-2">
+              <button 
+                v-for="ep in filteredLegacyEpisodes" 
+                :key="ep.id"
+                class="ep-grid-btn"
+                @click="selectLegacyHls(ep.hls_1080 || ep.hls_720 || ep.hls_480 || ep.hls)"
+              >
+                <div class="ep-num">{{ ep.ordinal ?? ep.number }}</div>
+                <div class="ep-desc">серия</div>
+              </button>
             </div>
           </div>
         </div>
@@ -82,24 +114,119 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
-  alias: String
+  alias: String,
+  shikimoriId: [String, Number]
 })
 
 const emit = defineEmits(['close', 'select'])
 
-const episodes = ref([])
-const externalPlayerUrl = ref('')
 const loading = ref(true)
-const selectedEpisode = ref(null)
+const error = ref(null)
 const searchQuery = ref('')
 
+// Переменные для Kodik
+const translations = ref([])
+const selectedTranslation = ref(null)
+
+// Переменные для легаси Anilibria
+const legacyEpisodes = ref([])
+const externalPlayerUrl = ref('')
+
+// Разделение переводов по типу
+const voiceTranslations = computed(() => {
+  return translations.value.filter(t => t.translation.type === 'voice')
+})
+
+const subTranslations = computed(() => {
+  return translations.value.filter(t => t.translation.type === 'subtitles')
+})
+
+// Парсинг серий для активной озвучки Kodik
+const episodesList = computed(() => {
+  if (!selectedTranslation.value) return []
+  const list = []
+  const seasons = selectedTranslation.value.seasons || {}
+  
+  const sortedSeasonKeys = Object.keys(seasons).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+  
+  for (const sKey of sortedSeasonKeys) {
+    const season = seasons[sKey]
+    const episodes = season.episodes || {}
+    const sortedEpisodeKeys = Object.keys(episodes).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+    for (const epKey of sortedEpisodeKeys) {
+      list.push({
+        number: parseInt(epKey, 10),
+        season: parseInt(sKey, 10),
+        link: episodes[epKey]
+      })
+    }
+  }
+  
+  if (list.length === 0) {
+    const count = selectedTranslation.value.last_episode || selectedTranslation.value.episodes_count || 1
+    for (let i = 1; i <= count; i++) {
+      list.push({
+        number: i,
+        season: 1,
+        link: ''
+      })
+    }
+  }
+  
+  return list
+})
+
+const filteredEpisodes = computed(() => {
+  if (searchQuery.value) {
+    const q = searchQuery.value.trim().toLowerCase()
+    return episodesList.value.filter(ep => ep.number.toString().includes(q))
+  }
+  return episodesList.value
+})
+
+const filteredLegacyEpisodes = computed(() => {
+  if (searchQuery.value) {
+    const q = searchQuery.value.trim().toLowerCase()
+    return legacyEpisodes.value.filter(ep => {
+      const num = (ep.ordinal ?? ep.number) || ''
+      return num.toString().includes(q)
+    })
+  }
+  return legacyEpisodes.value
+})
+
 onMounted(async () => {
-  if (props.alias) {
-    const auth = useAuthStore()
+  const auth = useAuthStore()
+  loading.value = true
+  
+  if (props.shikimoriId) {
+    // 1. Поиск озвучек через Kodik
+    try {
+      const res = await fetch(`/api/v1/reviews/integrations/kodik/search?shikimori_id=${props.shikimoriId}`, {
+        headers: {
+          'Authorization': `Bearer ${auth.accessToken}`
+        }
+      })
+      if (!res.ok) {
+        throw new Error('Не удалось загрузить базу озвучек')
+      }
+      const data = await res.json()
+      translations.value = data.results || []
+      
+      if (translations.value.length > 0) {
+        // По умолчанию выбираем первую озвучку
+        selectedTranslation.value = voiceTranslations.value[0] || translations.value[0]
+      }
+    } catch (e) {
+      console.error(e)
+      error.value = e.message
+    }
+  } else if (props.alias) {
+    // 2. Легаси поиск через AniLiberty
     try {
       const res = await fetch(`/api/v1/reviews/integrations/aniliberty/episodes/${props.alias}`, {
         headers: {
@@ -107,188 +234,214 @@ onMounted(async () => {
         }
       })
       const data = await res.json()
-      
-      // Запоминаем ссылку на внешний плеер Kodik из релиза
       externalPlayerUrl.value = data.external_player || ''
-      
-      // Загружаем список эпизодов
-      episodes.value = data.episodes || []
-      episodes.value.sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
+      legacyEpisodes.value = data.episodes || []
+      legacyEpisodes.value.sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
     } catch (e) {
       console.error("Failed to fetch AniLiberty episodes", e)
+      error.value = "Ошибка при загрузке эпизодов Anilibria"
     }
+  } else {
+    error.value = "Отсутствует ID аниме для поиска"
   }
+  
   loading.value = false
 })
 
-const filteredEpisodes = computed(() => {
-  if (episodes.value.length > 26 && searchQuery.value) {
-    const q = searchQuery.value.trim().toLowerCase()
-    return episodes.value.filter(ep => {
-      const num = (ep.ordinal ?? ep.number) || ''
-      return num.toString().includes(q)
-    })
-  }
-  return episodes.value
-})
-
-function selectEpisode(ep) {
-  selectedEpisode.value = ep
-  
-  // Авто-прокрутка вниз к выбору качества
-  nextTick(() => {
-    const modalBox = document.querySelector('.modal-body')
-    if (modalBox) {
-      modalBox.scrollTop = modalBox.scrollHeight
-    }
-  })
+function selectTranslation(t) {
+  selectedTranslation.value = t
 }
 
-function selectQuality(url) {
+function onEpisodeClick(ep) {
+  if (!selectedTranslation.value) return
+  
+  // Строим каноническую ссылку на Kodik для watchparty
+  let url = `https://kodik.info/find?shikimori_id=${props.shikimoriId}&episode=${ep.number}&translation_id=${selectedTranslation.value.translation.id}&shikimori=${props.shikimoriId}&only_episode=true&only_translation=true`
+  if (props.alias) {
+    url += `&alias=${props.alias}`
+  }
+  
   emit('select', url)
 }
 
-function selectKodik(episodeNum) {
-  let url = externalPlayerUrl.value
+function selectLegacyHls(url) {
   if (!url) return
-  
-  // Приводим к абсолютному протоколу
-  if (url.startsWith('//')) {
-    url = window.location.protocol + url
-  }
-  
-  // Добавляем параметр episode
-  const separator = url.includes('?') ? '&' : '?'
-  url = `${url}${separator}episode=${episodeNum}`
-  
   emit('select', url)
-}
-
-function hlsLinks(ep) {
-  const links = {}
-  for (const [key, val] of Object.entries(ep)) {
-    if (typeof val === 'string' && val.includes('.m3u8')) {
-      if (!['hls', 'hls_1080', 'hls_720', 'hls_480'].includes(key)) {
-        links[key] = val
-      }
-    }
-  }
-  if (Object.keys(links).length === 0) {
-    if (ep.url && typeof ep.url === 'string') links['Ссылка'] = ep.url;
-    if (ep.video && typeof ep.video === 'string') links['Видео'] = ep.video;
-    if (ep.source && typeof ep.source === 'string') links['Источник'] = ep.source;
-    if (ep.player && typeof ep.player === 'string') links['Плеер'] = ep.player;
-  }
-  return links
-}
-
-function formatKey(key) {
-  return key.replace(/_/g, ' ').toUpperCase()
 }
 </script>
 
 <style scoped>
-/* ══ Модал ══ */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 20px;
 }
+
 .modal-box {
-  border-radius: var(--radius-xl);
-  width: 100%; max-width: 520px;
-  max-height: 90vh;
+  border-radius: 20px;
+  max-height: 85vh;
   display: flex; flex-direction: column;
   overflow: hidden;
-  background: rgba(17, 24, 39, 0.75); /* --bg-elevated but transparent */
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
+  background: rgba(22, 22, 38, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
+
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 22px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
-  border-top-left-radius: var(--radius-xl);
-  border-top-right-radius: var(--radius-xl);
 }
-.modal-title { font-size: 17px; font-weight: 700; }
+
+.modal-title { font-size: 1.15rem; font-weight: 700; color: #fff; }
+
 .modal-close {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(255,255,255,0.06); border: none;
-  color: var(--text-secondary); cursor: pointer; font-size: 14px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05); border: none;
+  color: rgba(255, 255, 255, 0.6); cursor: pointer; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.modal-close:hover { background: rgba(255,255,255,0.12); }
-
-.modal-body {
-  overflow-y: auto; padding: 18px 22px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.modal-body::-webkit-scrollbar { width: 4px; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-.episodes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-.episodes-list::-webkit-scrollbar {
-  width: 6px;
-}
-.episodes-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-.episodes-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ep-row-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
   transition: all 0.2s ease;
-  width: 100%;
 }
-.ep-row-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: rotate(90deg);
 }
-.ep-row-btn.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.5);
+
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
 }
-.ep-num {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+
+.group-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 500;
 }
-.ep-name {
-  font-size: 14px;
+
+/* Озвучки */
+.translation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.translation-grid::-webkit-scrollbar { width: 4px; }
+.translation-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+
+.trans-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+.trans-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+.trans-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+.trans-name {
+  font-size: 0.8rem;
   font-weight: 600;
   color: #fff;
-  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
+.trans-badge {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(0,0,0,0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
+.trans-icon { font-size: 0.95rem; }
 
-.w-full {
+/* Эпизоды */
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.episodes-grid::-webkit-scrollbar { width: 4px; }
+.episodes-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+
+.ep-grid-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ep-grid-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: scale(1.05);
+}
+.ep-num { font-size: 1rem; font-weight: 700; color: #fff; }
+.ep-desc { font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.form-input {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
   width: 100%;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.form-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(99, 102, 241, 1);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 </style>

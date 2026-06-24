@@ -106,6 +106,7 @@ watch(selectedMirror, (newVal) => {
 function sendCommand(method, args = {}) {
   if (iframeRef.value && iframeRef.value.contentWindow) {
     try {
+      // 1. Стандартный формат объекта
       iframeRef.value.contentWindow.postMessage({
         key: 'kodik_player_api',
         value: {
@@ -113,6 +114,19 @@ function sendCommand(method, args = {}) {
           ...args
         }
       }, '*')
+
+      // 2. Альтернативные строковые сообщения для старых зеркал / плееров
+      if (method === 'seek') {
+        const val = args.value !== undefined ? args.value : args.time
+        if (val !== undefined) {
+          iframeRef.value.contentWindow.postMessage(`setCurrentTime=${val}`, '*')
+          iframeRef.value.contentWindow.postMessage(`seek=${val}`, '*')
+        }
+      } else if (method === 'play') {
+        iframeRef.value.contentWindow.postMessage('play', '*')
+      } else if (method === 'pause') {
+        iframeRef.value.contentWindow.postMessage('pause', '*')
+      }
     } catch (e) {
       console.error('Failed to send postMessage to Kodik iframe', e)
     }
@@ -176,14 +190,14 @@ function syncPause(time) {
 // Позиционирование
 function syncSeek(time) {
   isSyncing = true
-  sendCommand('seek', { time })
+  sendCommand('seek', { time: time, value: time })
   lastTime = time
   setTimeout(() => { isSyncing = false }, 400)
 }
 
 function seekIfNeeded(time) {
   if (Math.abs(lastTime - time) > 2) {
-    sendCommand('seek', { time })
+    sendCommand('seek', { time: time, value: time })
     lastTime = time
   }
 }

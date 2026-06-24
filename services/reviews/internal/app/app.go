@@ -62,6 +62,8 @@ func Run() error {
 	mux.Handle("/api/v1/reviews/integrations/aniliberty/search", auth(http.HandlerFunc(integrationHandler.AnilibertySearch)))
 	mux.Handle("/api/v1/reviews/integrations/aniliberty/episodes/", auth(http.HandlerFunc(integrationHandler.AnilibertyEpisodes)))
 	mux.Handle("/api/v1/reviews/integrations/aniliberty/proxy", http.HandlerFunc(integrationHandler.AnilibertyProxy))
+	mux.Handle("/api/v1/reviews/integrations/kodik/search", auth(http.HandlerFunc(integrationHandler.KodikSearch)))
+
 
 	server := &http.Server{Addr: ":" + cfg.Port, Handler: mux}
 	fmt.Printf("[reviews] Server starting on port %s...\n", cfg.Port)

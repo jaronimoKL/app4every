@@ -334,7 +334,7 @@
                     <div v-else style="font-size:11px;color:var(--text-muted);font-style:italic;">Ссылок нет</div>
                     
                     <button
-                      v-if="item.aniliberty_alias || (item.links && item.links.length > 0)"
+                      v-if="item.shikimori_id || item.aniliberty_alias || (item.links && item.links.length > 0)"
                       class="watch-together-btn mt-2"
                       @click.stop="handleWatchTogether(item)"
                     >
@@ -558,6 +558,7 @@
     <EpisodePickerModal 
       v-if="showEpisodePicker"
       :alias="activeAlias"
+      :shikimori-id="activeShikimoriId"
       @close="showEpisodePicker = false"
       @select="onEpisodeSelect"
     />
@@ -929,11 +930,13 @@ function deleteItemConfirm(item) {
 }
 
 const activeAlias = ref(null)
+const activeShikimoriId = ref(null)
 const showEpisodePicker = ref(false)
 
 function handleWatchTogether(item) {
-  if (item.aniliberty_alias) {
-    activeAlias.value = item.aniliberty_alias
+  activeShikimoriId.value = item.shikimori_id || null
+  activeAlias.value = item.aniliberty_alias || null
+  if (item.shikimori_id || item.aniliberty_alias) {
     showEpisodePicker.value = true
   } else if (item.links && item.links.length > 0) {
     openWatchParty(item.links[0].url)
@@ -942,16 +945,22 @@ function handleWatchTogether(item) {
 
 function onEpisodeSelect(url) {
   showEpisodePicker.value = false
-  openWatchParty(url)
+  openWatchParty(url, activeShikimoriId.value, activeAlias.value)
 }
 
 function generateUUID() {
   return Math.random().toString(36).substring(2, 10)
 }
 
-function openWatchParty(videoUrl) {
+function openWatchParty(videoUrl, shikimoriId, alias) {
   const roomId = generateUUID()
   sessionStorage.setItem(`wp_url_${roomId}`, videoUrl)
+  if (shikimoriId) {
+    sessionStorage.setItem(`wp_shikimori_${roomId}`, shikimoriId)
+  }
+  if (alias) {
+    sessionStorage.setItem(`wp_alias_${roomId}`, alias)
+  }
   router.push(`/watch/room/${roomId}`).catch(err => {
     console.error('Router push error:', err)
     window.location.href = `/watch/room/${roomId}`
