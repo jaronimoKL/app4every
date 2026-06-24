@@ -338,7 +338,10 @@
                       class="watch-together-btn mt-2"
                       @click.stop="handleWatchTogether(item)"
                     >
-                      📺 Смотреть вместе
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                      </svg>
+                      Смотреть вместе
                     </button>
                   </div>
 
@@ -983,14 +986,19 @@ async function incrementEpisode(item) {
   const newEpisode = item.current_episode + 1
   
   const payload = {
-    title:           item.title,
-    content_type:    item.content_type,
-    status:          newEpisode === item.max_episodes ? 'completed' : item.status,
-    current_episode: newEpisode,
-    max_episodes:    item.max_episodes,
-    poster_url:      item.poster_url,
-    genres:          item.genres || [],
-    notes:           item.notes
+    title:            item.title,
+    content_type:     item.content_type,
+    status:           newEpisode === item.max_episodes ? 'completed' : item.status,
+    current_episode:  newEpisode,
+    max_episodes:     item.max_episodes,
+    poster_url:       item.poster_url,
+    genres:           item.genres || [],
+    notes:            item.notes,
+    shikimori_id:     item.shikimori_id || null,
+    description:      item.description || '',
+    episodes_total:   item.episodes_total || null,
+    aniliberty_alias: item.aniliberty_alias || '',
+    shikimori_score:  item.shikimori_score || null
   }
   
   try {
@@ -1004,14 +1012,19 @@ async function changeItemStatus(item, newStatus) {
   if (item.status === newStatus) return
   
   const payload = {
-    title:           item.title,
-    content_type:    item.content_type,
-    status:          newStatus,
-    current_episode: newStatus === 'completed' ? item.max_episodes : item.current_episode,
-    max_episodes:    item.max_episodes,
-    poster_url:      item.poster_url,
-    genres:          item.genres || [],
-    notes:           item.notes
+    title:            item.title,
+    content_type:     item.content_type,
+    status:           newStatus,
+    current_episode:  newStatus === 'completed' ? item.max_episodes : item.current_episode,
+    max_episodes:     item.max_episodes,
+    poster_url:       item.poster_url,
+    genres:           item.genres || [],
+    notes:            item.notes,
+    shikimori_id:     item.shikimori_id || null,
+    description:      item.description || '',
+    episodes_total:   item.episodes_total || null,
+    aniliberty_alias: item.aniliberty_alias || '',
+    shikimori_score:  item.shikimori_score || null
   }
   
   try {
@@ -1675,6 +1688,32 @@ function typeColor(type) {
 }
 .link-del-small:hover {
   color: #f87171;
+}
+
+.watch-together-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.watch-together-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+  color: #ffffff;
+  border-color: rgba(99, 102, 241, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+.watch-together-btn:active {
+  transform: translateY(0);
 }
 
 /* Модалки */

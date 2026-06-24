@@ -171,7 +171,10 @@
                 class="watch-together-btn"
                 @click.stop="handleWatchTogether(rev)"
               >
-                📺 Смотреть вместе
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                  <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                </svg>
+                Смотреть вместе
               </button>
             </div>
             <div class="card-links" v-else-if="rev.shikimori_id || rev.aniliberty_alias" @click.stop>
@@ -179,7 +182,10 @@
                 class="watch-together-btn"
                 @click.stop="handleWatchTogether(rev)"
               >
-                📺 Смотреть вместе
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                  <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                </svg>
+                Смотреть вместе
               </button>
             </div>
           </div>
@@ -693,12 +699,17 @@ async function handleSave() {
   if (!form.title.trim()) return
 
   const payload = {
-    title:        form.title.trim(),
-    content_type: form.content_type,
-    status:       form.status,
-    rating:       form.rating,
-    notes:        form.notes.trim(),
-    poster_url:   form.poster_url.trim(),
+    title:            form.title.trim(),
+    content_type:     form.content_type,
+    status:           form.status,
+    rating:           form.rating,
+    notes:            form.notes.trim(),
+    poster_url:       form.poster_url.trim(),
+    shikimori_id:     form.shikimori_id || null,
+    description:      form.description || '',
+    episodes_total:   form.episodes_total || null,
+    aniliberty_alias: form.aniliberty_alias || '',
+    shikimori_score:  form.shikimori_score || null
   }
 
   let savedReview
@@ -969,20 +980,27 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .watch-together-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.35);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .watch-together-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
-  color: #fff;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+  color: #ffffff;
+  border-color: rgba(99, 102, 241, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+.watch-together-btn:active {
+  transform: translateY(0);
 }
 
 /* ══ Модал ══ */
