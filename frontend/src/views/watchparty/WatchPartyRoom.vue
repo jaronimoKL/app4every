@@ -100,7 +100,7 @@
         </div>
 
         <!-- Панель управления сериями и озвучками -->
-        <div class="anime-controls-panel glass animate-fade-in" v-if="!roomState.error && hasAnimeMetadata">
+        <div class="anime-controls-panel glass animate-fade-in" v-if="!roomState.error && hasAnimeMetadata && (roomState.videoType === 'kodik' || roomState.videoType === 'alloha')">
           <div class="panel-header">
             <h3 class="panel-title">⭐ Управление озвучкой и сериями</h3>
             <span v-if="!roomState.isOwner" class="badge-host-controlled">🔒 Управляет создатель комнаты</span>
@@ -351,9 +351,15 @@ function onTranslationSelect(t) {
 
   const shId = currentShikimoriId.value
   const alias = currentAlias.value
-  const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
   
-  changeVideo(url, 'kodik')
+  if (roomState.videoType === 'alloha') {
+    const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
+    const url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${targetEp}&translation=${encodeURIComponent(t.translation.title)}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}`
+    changeVideo(url, 'alloha')
+  } else {
+    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+    changeVideo(url, 'kodik')
+  }
 }
 
 function onEpisodeSelect(episodeNum) {
@@ -363,9 +369,24 @@ function onEpisodeSelect(episodeNum) {
   const alias = currentAlias.value
   const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
 
-  const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-  
-  changeVideo(url, 'kodik')
+  if (roomState.videoType === 'alloha') {
+    const activeTrans = activeTranslationData.value
+    const transTitle = activeTrans ? activeTrans.translation.title : ''
+    const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
+    
+    let url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${episodeNum}`
+    if (transTitle) {
+      url += `&translation=${encodeURIComponent(transTitle)}`
+    }
+    if (translationId) {
+      url += `&translation_id=${translationId}`
+    }
+    url += `&shikimori=${shId}&alias=${alias}`
+    changeVideo(url, 'alloha')
+  } else {
+    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+    changeVideo(url, 'kodik')
+  }
 }
 
 // Извлекаем номер текущей серии из URL
@@ -413,7 +434,7 @@ function detectVideoType(url) {
   if (/youtube\.com|youtu\.be/.test(url)) return 'youtube'
   if (/rutube\.ru/.test(url)) return 'rutube'
   if (/kodik|aniqit/i.test(url)) return 'kodik'
-  if (/alloha\.tv/i.test(url)) return 'alloha'
+  if (/alloha/i.test(url)) return 'alloha'
   if (/\.(mp4|webm|ogg|m3u8)(\?|$)/i.test(url)) return 'direct'
   return 'unknown'
 }
@@ -460,8 +481,19 @@ async function switchPlayer(type) {
     const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
     changeVideo(url, 'kodik')
   } else if (type === 'alloha') {
-    // Формируем URL Alloha по Shikimori ID (используем публичный токен)
-    const url = `https://api.alloha.tv/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${ep}&shikimori=${shId}&alias=${alias}`
+    const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
+    const activeTrans = activeTranslationData.value
+    const transTitle = activeTrans ? activeTrans.translation.title : ''
+    const activeMirror = localStorage.getItem('alloha_mirror') || 'api.alloha.live'
+    
+    let url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${ep}`
+    if (transTitle) {
+      url += `&translation=${encodeURIComponent(transTitle)}`
+    }
+    if (translationId) {
+      url += `&translation_id=${translationId}`
+    }
+    url += `&shikimori=${shId}&alias=${alias}`
     changeVideo(url, 'alloha')
   } else if (type === 'direct') {
     loadingDirect.value = true
