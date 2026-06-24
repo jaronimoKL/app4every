@@ -338,15 +338,28 @@ function onTranslationSelect(t) {
   let targetEp = currentEpisode.value
   const seasons = t.seasons || {}
   let hasEp = false
+  let baseLink = ''
+  
   for (const sKey in seasons) {
     if (seasons[sKey].episodes && seasons[sKey].episodes[targetEp]) {
       hasEp = true
+      baseLink = seasons[sKey].episodes[targetEp]
       break
     }
   }
   
-  if (!hasEp && t.last_episode && targetEp > t.last_episode) {
+  if (!hasEp) {
     targetEp = 1
+    for (const sKey in seasons) {
+      if (seasons[sKey].episodes) {
+        const sortedKeys = Object.keys(seasons[sKey].episodes).sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+        if (sortedKeys.length > 0) {
+          targetEp = parseInt(sortedKeys[0], 10)
+          baseLink = seasons[sKey].episodes[sortedKeys[0]]
+          break
+        }
+      }
+    }
   }
 
   const shId = currentShikimoriId.value
@@ -357,8 +370,28 @@ function onTranslationSelect(t) {
     const url = `https://${activeMirror}/?token=df2ef76e33055d72f107f90c885068&shikimori=${shId}&episode=${targetEp}&translation=${encodeURIComponent(t.translation.title)}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}`
     changeVideo(url, 'alloha')
   } else {
-    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-    changeVideo(url, 'kodik')
+    if (!baseLink) {
+      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}`
+    } else if (baseLink.startsWith('//')) {
+      baseLink = 'https:' + baseLink
+    }
+    
+    try {
+      const urlObj = new URL(baseLink)
+      urlObj.searchParams.set('only_episode', 'true')
+      urlObj.searchParams.set('only_translation', 'true')
+      urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) {
+        urlObj.searchParams.set('alias', alias)
+      }
+      if (t.translation.id) {
+        urlObj.searchParams.set('translation_id', String(t.translation.id))
+      }
+      changeVideo(urlObj.toString(), 'kodik')
+    } catch (e) {
+      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${targetEp}&translation_id=${t.translation.id}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+      changeVideo(fallbackUrl, 'kodik')
+    }
   }
 }
 
@@ -384,8 +417,39 @@ function onEpisodeSelect(episodeNum) {
     url += `&shikimori=${shId}&alias=${alias}`
     changeVideo(url, 'alloha')
   } else {
-    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-    changeVideo(url, 'kodik')
+    let baseLink = ''
+    if (activeTranslationData.value && activeTranslationData.value.seasons) {
+      const seasons = activeTranslationData.value.seasons
+      for (const sKey in seasons) {
+        if (seasons[sKey].episodes && seasons[sKey].episodes[episodeNum]) {
+          baseLink = seasons[sKey].episodes[episodeNum]
+          break
+        }
+      }
+    }
+    
+    if (!baseLink) {
+      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}`
+    } else if (baseLink.startsWith('//')) {
+      baseLink = 'https:' + baseLink
+    }
+    
+    try {
+      const urlObj = new URL(baseLink)
+      urlObj.searchParams.set('only_episode', 'true')
+      urlObj.searchParams.set('only_translation', 'true')
+      urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) {
+        urlObj.searchParams.set('alias', alias)
+      }
+      if (translationId) {
+        urlObj.searchParams.set('translation_id', String(translationId))
+      }
+      changeVideo(urlObj.toString(), 'kodik')
+    } catch (e) {
+      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${episodeNum}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+      changeVideo(fallbackUrl, 'kodik')
+    }
   }
 }
 
@@ -478,8 +542,39 @@ async function switchPlayer(type) {
   
   if (type === 'kodik') {
     const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
-    const url = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
-    changeVideo(url, 'kodik')
+    let baseLink = ''
+    if (activeTranslationData.value && activeTranslationData.value.seasons) {
+      const seasons = activeTranslationData.value.seasons
+      for (const sKey in seasons) {
+        if (seasons[sKey].episodes && seasons[sKey].episodes[ep]) {
+          baseLink = seasons[sKey].episodes[ep]
+          break
+        }
+      }
+    }
+    
+    if (!baseLink) {
+      baseLink = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}`
+    } else if (baseLink.startsWith('//')) {
+      baseLink = 'https:' + baseLink
+    }
+    
+    try {
+      const urlObj = new URL(baseLink)
+      urlObj.searchParams.set('only_episode', 'true')
+      urlObj.searchParams.set('only_translation', 'true')
+      urlObj.searchParams.set('shikimori', String(shId))
+      if (alias) {
+        urlObj.searchParams.set('alias', alias)
+      }
+      if (translationId) {
+        urlObj.searchParams.set('translation_id', String(translationId))
+      }
+      changeVideo(urlObj.toString(), 'kodik')
+    } catch (e) {
+      const fallbackUrl = `https://kodik.info/find?shikimori_id=${shId}&episode=${ep}&translation_id=${translationId}&shikimori=${shId}&alias=${alias}&only_episode=true&only_translation=true`
+      changeVideo(fallbackUrl, 'kodik')
+    }
   } else if (type === 'alloha') {
     const translationId = currentTranslationId.value || (activeTranslationData.value ? activeTranslationData.value.translation.id : '')
     const activeTrans = activeTranslationData.value

@@ -255,13 +255,35 @@ function selectTranslation(t) {
 function onEpisodeClick(ep) {
   if (!selectedTranslation.value) return
   
-  // Строим каноническую ссылку на Kodik для watchparty
-  let url = `https://kodik.info/find?shikimori_id=${props.shikimoriId}&episode=${ep.number}&translation_id=${selectedTranslation.value.translation.id}&shikimori=${props.shikimoriId}&only_episode=true&only_translation=true`
-  if (props.alias) {
-    url += `&alias=${props.alias}`
+  let baseLink = ep.link
+  if (!baseLink) {
+    baseLink = `https://kodik.info/find?shikimori_id=${props.shikimoriId}&episode=${ep.number}&translation_id=${selectedTranslation.value.translation.id}`
+  } else {
+    if (baseLink.startsWith('//')) {
+      baseLink = 'https:' + baseLink
+    }
   }
   
-  emit('select', url)
+  try {
+    const urlObj = new URL(baseLink)
+    urlObj.searchParams.set('only_episode', 'true')
+    urlObj.searchParams.set('only_translation', 'true')
+    urlObj.searchParams.set('shikimori', String(props.shikimoriId))
+    if (props.alias) {
+      urlObj.searchParams.set('alias', props.alias)
+    }
+    if (selectedTranslation.value.translation.id) {
+      urlObj.searchParams.set('translation_id', String(selectedTranslation.value.translation.id))
+    }
+    emit('select', urlObj.toString())
+  } catch (e) {
+    console.error('Failed to parse URL', e)
+    let fallbackUrl = `https://kodik.info/find?shikimori_id=${props.shikimoriId}&episode=${ep.number}&translation_id=${selectedTranslation.value.translation.id}&shikimori=${props.shikimoriId}&only_episode=true&only_translation=true`
+    if (props.alias) {
+      fallbackUrl += `&alias=${props.alias}`
+    }
+    emit('select', fallbackUrl)
+  }
 }
 
 function selectLegacyHls(url) {
