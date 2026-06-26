@@ -1,5 +1,16 @@
 <template>
-  <div class="lobby-container">
+  <div class="lobby-container flex flex-col">
+    <!-- Header with Back Button -->
+    <div class="w-full max-w-[900px] mb-6 flex justify-between items-center px-4 md:px-0">
+      <button class="btn-back flex items-center gap-2 text-sm" @click="$router.back()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Назад
+      </button>
+    </div>
+
     <div class="lobby-content">
       <!-- Left side: Active Rooms -->
       <div class="active-rooms-panel glass-panel">
@@ -184,14 +195,30 @@ function joinSpecificRoom(id) {
   padding: 8px 16px;
   font-size: 0.85rem;
 }
+.btn-back {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .lobby-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: calc(100vh - 60px);
   background: var(--bg-color, #1a1a1a);
   color: #fff;
-  padding: 20px;
+  padding: 40px 20px;
 }
 
 .lobby-content {

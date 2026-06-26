@@ -103,14 +103,18 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Upgrade connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 
-	client := hub.NewClient(claims.UserID, claims.Username, roomID, conn, h.Hub)
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		username = claims.Username
+	}
+
+	client := hub.NewClient(claims.UserID, username, roomID, conn, h.Hub)
 	room := h.Hub.GetOrCreate(roomID, claims.UserID)
 
 	// Authorization logic

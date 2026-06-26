@@ -85,7 +85,7 @@ func (h *Hub) GetRoomsForUsers(userMap map[int64]bool) []map[string]interface{} 
 			}
 		}
 
-		if hasMatch {
+		if hasMatch && (len(room.Clients) > 0 || len(room.Pending) > 0) {
 			state := map[string]interface{}{
 				"room_id":          room.ID,
 				"video_url":        room.VideoURL,
@@ -94,6 +94,7 @@ func (h *Hub) GetRoomsForUsers(userMap map[int64]bool) []map[string]interface{} 
 				"aniliberty_alias": room.AnilibertyAlias,
 				"is_playing":       room.IsPlaying,
 				"owner_id":         room.OwnerID,
+				"participants":     room.Participants(),
 			}
 			activeRooms = append(activeRooms, state)
 		}

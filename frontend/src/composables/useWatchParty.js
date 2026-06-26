@@ -1,4 +1,5 @@
 import { reactive, ref, onUnmounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 export function useWatchParty() {
   const ws = ref(null)
@@ -27,7 +28,9 @@ export function useWatchParty() {
     roomState.knockRequests = []
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/watchparty/ws?room_id=${roomId}&token=${token}`
+    const authStore = useAuthStore()
+    const username = encodeURIComponent(authStore.user?.username || '')
+    const wsUrl = `${protocol}//${window.location.host}/api/v1/watchparty/ws?room_id=${roomId}&token=${token}&username=${username}`
 
     ws.value = new WebSocket(wsUrl)
 
