@@ -621,6 +621,7 @@ const selectedContentType = ref('all')
 
 const friends = ref([])
 const activeRooms = ref([])
+let roomsPollingInterval = null
 
 async function fetchGroupActiveRooms() {
   if (!activeGroup.value || !activeGroup.value.members) return
@@ -632,6 +633,18 @@ async function fetchGroupActiveRooms() {
     }
   } catch (err) {
     console.error('Failed to fetch active rooms for group:', err)
+  }
+}
+
+function startRoomsPolling() {
+  stopRoomsPolling()
+  roomsPollingInterval = setInterval(fetchGroupActiveRooms, 10000)
+}
+
+function stopRoomsPolling() {
+  if (roomsPollingInterval) {
+    clearInterval(roomsPollingInterval)
+    roomsPollingInterval = null
   }
 }
 
@@ -727,6 +740,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   groupsStore.disconnectWS()
+  stopRoomsPolling()
 })
 
 // Реактивный выбор группы
@@ -740,8 +754,10 @@ watch(activeGroupId, async (newId) => {
     await groupsStore.fetchGroupDetail(newId)
     groupsStore.connectWS(newId)
     fetchGroupActiveRooms()
+    startRoomsPolling()
   } else {
     groupsStore.disconnectWS()
+    stopRoomsPolling()
   }
 })
 

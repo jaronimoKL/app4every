@@ -80,11 +80,24 @@ func (r *Room) UpdateState(isPlaying bool, currentTime float64) {
 func (r *Room) ChangeVideo(url, videoType string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	r.VideoURL = url
 	r.VideoType = videoType
 	r.IsPlaying = false
 	r.CurrentTime = 0
 	r.UpdatedAt = time.Now()
+}
+
+func (r *Room) UpdateMetadata(shikimoriID, anilibertyAlias string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if shikimoriID != "" {
+		r.ShikimoriID = shikimoriID
+	}
+	if anilibertyAlias != "" {
+		r.AnilibertyAlias = anilibertyAlias
+	}
 }
 
 func (r *Room) Join(c *Client) error {

@@ -252,14 +252,7 @@ func (h *Handler) handleClientMessage(client *hub.Client, room *hub.Room, msg []
 
 	case "update_metadata":
 		if client.UserID == room.OwnerID {
-			room.mu.Lock()
-			if parsed.ShikimoriID != "" {
-				room.ShikimoriID = parsed.ShikimoriID
-			}
-			if parsed.AnilibertyAlias != "" {
-				room.AnilibertyAlias = parsed.AnilibertyAlias
-			}
-			room.mu.Unlock()
+			room.UpdateMetadata(parsed.ShikimoriID, parsed.AnilibertyAlias)
 			
 			room.Broadcast(hub.Message{
 				Type:            "metadata_updated",
