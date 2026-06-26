@@ -52,11 +52,56 @@ func (h *Hub) Cleanup() {
 	defer h.mu.Unlock()
 
 	for id, room := range h.rooms {
-		if room.IsEmpty() {
+		room.mu.RLock()
+		isEmpty := len(room.Clients) == 0 && len(room.Pending) == 0
+		emptySince := room.EmptySince
+		room.mu.RUnlock()
+
+		if isEmpty && emptySince != nil && time.Since(*emptySince) > 10*time.Minute {
 			delete(h.rooms, id)
-			log.Printf("Room cleaned up (empty): %s", id)
+			log.Printf("Room cleaned up (empty > 10m): %s", id)
 		}
 	}
+}
+
+func (h *Hub) GetRoomsForUsers(userMap map[int64]bool) []map[string]interface{} {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var activeRooms []map[string]interface{}
+
+	for _, room := range h.rooms {
+		room.mu.RLock()
+		
+		hasMatch := false
+		if userMap[room.OwnerID] {
+			hasMatch = true
+		} else {
+			for clientID := range room.Clients {
+				if userMap[clientID] {
+					hasMatch = true
+					break
+				}
+			}
+		}
+
+		if hasMatch {
+			state := map[string]interface{}{
+				"room_id":          room.ID,
+				"video_url":        room.VideoURL,
+				"video_type":       room.VideoType,
+				"shikimori_id":     room.ShikimoriID,
+				"aniliberty_alias": room.AnilibertyAlias,
+				"is_playing":       room.IsPlaying,
+				"owner_id":         room.OwnerID,
+			}
+			activeRooms = append(activeRooms, state)
+		}
+		
+		room.mu.RUnlock()
+	}
+
+	return activeRooms
 }
 
 func (h *Hub) startCleanupTicker() {

@@ -228,7 +228,8 @@ const {
   changeVideo, 
   admitUser, 
   rejectUser, 
-  kickUser 
+  kickUser,
+  updateMetadata
 } = useWatchParty()
 
 const editUrl = ref('')
@@ -240,6 +241,12 @@ const currentAlias = ref(sessionStorage.getItem(`wp_alias_${roomId}`) || '')
 
 const hasAnimeMetadata = computed(() => {
   return currentShikimoriId.value !== ''
+})
+
+watch([() => roomState.isConnected, currentShikimoriId, currentAlias], ([connected, shId, alias]) => {
+  if (connected && roomState.isOwner) {
+    updateMetadata(shId, alias)
+  }
 })
 
 // Кастомное управление озвучками и сериями для Kodik

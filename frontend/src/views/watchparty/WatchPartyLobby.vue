@@ -35,17 +35,92 @@
           </button>
         </div>
       </div>
+
+      <div v-if="activeRooms.length > 0" class="active-rooms-section mt-6">
+        <div class="divider">
+          <span>Активные комнаты друзей</span>
+        </div>
+        <div class="rooms-list flex flex-col gap-3 mt-3">
+          <div 
+            v-for="room in activeRooms" 
+            :key="room.room_id"
+            class="active-room-card glass p-3 rounded-lg flex justify-between items-center"
+          >
+            <div class="room-info">
+              <div class="room-title flex items-center gap-2">
+                <span class="online-dot"></span>
+                <span class="font-semibold">Комната {{ room.room_id.substring(0, 4) }}</span>
+              </div>
+              <div class="room-meta text-xs text-gray-400 mt-1">
+                Участников: {{ room.participants?.length || 1 }} 
+                <span v-if="room.shikimori_id || room.aniliberty_alias"> • Смотрят аниме</span>
+              </div>
+            </div>
+            <button class="btn primary-btn btn-sm" @click="joinSpecificRoom(room.room_id)">
+              Присоединиться
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useGroupsStore } from '@/stores/groups'
+import { friendsApi, watchpartyApi } from '@/services/api'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const groupsStore = useGroupsStore()
+
 const newRoomUrl = ref('')
 const joinRoomId = ref('')
+const activeRooms = ref([])
+
+onMounted(async () => {
+  await fetchActiveRooms()
+})
+
+async function fetchActiveRooms() {
+  try {
+    const userIds = new Set()
+    
+    // Get friends
+    try {
+      const friends = await friendsApi.getFriends(authStore.accessToken)
+      if (friends) {
+        friends.forEach(f => userIds.add(f.id))
+      }
+    } catch (e) {
+      console.error('Failed to load friends for active rooms:', e)
+    }
+
+    // Get group members
+    try {
+      if (groupsStore.groups.length === 0) {
+        await groupsStore.fetchGroups()
+      }
+      groupsStore.groups.forEach(g => {
+        if (g.members) {
+          g.members.forEach(m => userIds.add(m.user_id))
+        }
+      })
+    } catch (e) {
+      console.error('Failed to load groups for active rooms:', e)
+    }
+
+    if (userIds.size > 0) {
+      const rooms = await watchpartyApi.getActiveRooms(Array.from(userIds))
+      activeRooms.value = rooms || []
+    }
+  } catch (err) {
+    console.error('Failed to fetch active rooms:', err)
+  }
+}
 
 function generateUUID() {
   return Math.random().toString(36).substring(2, 10)
@@ -62,9 +137,25 @@ function joinRoom() {
   if (!joinRoomId.value) return
   router.push(`/watch/room/${joinRoomId.value}`)
 }
+
+function joinSpecificRoom(id) {
+  router.push(`/watch/room/${id}`)
+}
 </script>
 
 <style scoped>
+.online-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #4ade80;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
 .lobby-container {
   display: flex;
   align-items: center;

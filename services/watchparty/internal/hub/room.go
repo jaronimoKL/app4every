@@ -15,6 +15,9 @@ type Room struct {
 	CurrentTime float64
 	UpdatedAt   time.Time
 	OwnerID     int64
+	ShikimoriID string
+	AnilibertyAlias string
+	EmptySince  *time.Time
 
 	mu      sync.RWMutex
 	Clients map[int64]*Client
@@ -39,6 +42,8 @@ type Message struct {
 	Message     string            `json:"message,omitempty"`
 	VideoURL    string            `json:"video_url,omitempty"`
 	VideoType   string            `json:"video_type,omitempty"`
+	ShikimoriID string            `json:"shikimori_id,omitempty"`
+	AnilibertyAlias string        `json:"aniliberty_alias,omitempty"`
 	IsPlaying   *bool             `json:"is_playing,omitempty"`
 	CurrentTime *float64          `json:"current_time,omitempty"`
 	IsOwner     *bool             `json:"is_owner,omitempty"`
@@ -46,10 +51,12 @@ type Message struct {
 }
 
 func NewRoom(id string, ownerID int64) *Room {
+	now := time.Now()
 	return &Room{
 		ID:        id,
 		OwnerID:   ownerID,
-		UpdatedAt: time.Now(),
+		UpdatedAt: now,
+		EmptySince: &now,
 		Clients:   make(map[int64]*Client),
 		Pending:   make(map[int64]*Client),
 	}
@@ -89,6 +96,7 @@ func (r *Room) Join(c *Client) error {
 	}
 
 	r.Clients[c.UserID] = c
+	r.EmptySince = nil
 	return nil
 }
 
@@ -98,12 +106,18 @@ func (r *Room) Leave(userID int64) {
 
 	delete(r.Clients, userID)
 	delete(r.Pending, userID)
+
+	if len(r.Clients) == 0 && len(r.Pending) == 0 {
+		now := time.Now()
+		r.EmptySince = &now
+	}
 }
 
 func (r *Room) AddPending(c *Client) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Pending[c.UserID] = c
+	r.EmptySince = nil
 }
 
 func (r *Room) PopPending(userID int64) (*Client, bool) {

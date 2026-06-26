@@ -26,6 +26,7 @@ func Run() error {
 	})
 
 	mux.HandleFunc("/api/v1/watchparty/ws", handler.ServeWS)
+	mux.HandleFunc("/api/v1/watchparty/rooms/active", handler.GetActiveRooms)
 	mux.HandleFunc("/api/v1/watchparty/rooms/", handler.GetRoomState)
 
 	server := &http.Server{

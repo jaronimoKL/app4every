@@ -193,6 +193,16 @@ export function useWatchParty() {
     }
   }
 
+  function updateMetadata(shikimoriId, anilibertyAlias) {
+    if (roomState.isOwner && ws.value?.readyState === WebSocket.OPEN) {
+      ws.value.send(JSON.stringify({
+        type: 'update_metadata',
+        shikimori_id: shikimoriId || '',
+        aniliberty_alias: anilibertyAlias || ''
+      }))
+    }
+  }
+
   return {
     roomState,
     playerRef,
@@ -204,6 +214,7 @@ export function useWatchParty() {
     changeVideo,
     admitUser,
     rejectUser,
-    kickUser
+    kickUser,
+    updateMetadata
   }
 }

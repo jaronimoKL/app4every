@@ -56,6 +56,34 @@ func (h *Handler) GetRoomState(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(state)
 }
 
+func (h *Handler) GetActiveRooms(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		UserIDs []int64 `json:"user_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	userMap := make(map[int64]bool)
+	for _, id := range req.UserIDs {
+		userMap[id] = true
+	}
+
+	activeRooms := h.Hub.GetRoomsForUsers(userMap)
+	if activeRooms == nil {
+		activeRooms = make([]map[string]interface{}, 0)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(activeRooms)
+}
+
 func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	roomID := r.URL.Query().Get("room_id")
 	if roomID == "" {
@@ -171,6 +199,8 @@ func (h *Handler) sendJoinedMessage(client *hub.Client, room *hub.Room) {
 		IsOwner:      &isOwner,
 		VideoURL:     room.VideoURL,
 		VideoType:    room.VideoType,
+		ShikimoriID:  room.ShikimoriID,
+		AnilibertyAlias: room.AnilibertyAlias,
 		IsPlaying:    &isPlaying,
 		CurrentTime:  &currentTime,
 		Participants: room.Participants(),
@@ -218,6 +248,24 @@ func (h *Handler) handleClientMessage(client *hub.Client, room *hub.Room, msg []
 				VideoURL:  parsed.VideoURL,
 				VideoType: videoType,
 			}, 0) // broadcast to all
+		}
+
+	case "update_metadata":
+		if client.UserID == room.OwnerID {
+			room.mu.Lock()
+			if parsed.ShikimoriID != "" {
+				room.ShikimoriID = parsed.ShikimoriID
+			}
+			if parsed.AnilibertyAlias != "" {
+				room.AnilibertyAlias = parsed.AnilibertyAlias
+			}
+			room.mu.Unlock()
+			
+			room.Broadcast(hub.Message{
+				Type:            "metadata_updated",
+				ShikimoriID:     room.ShikimoriID,
+				AnilibertyAlias: room.AnilibertyAlias,
+			}, 0)
 		}
 
 	case "admit":

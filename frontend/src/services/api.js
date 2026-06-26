@@ -78,3 +78,9 @@ export const friendsApi = {
   searchUsers: (q, token) =>
     request('GET', `/users/search?q=${encodeURIComponent(q)}`, null, token),
 }
+
+// ── WatchParty ──
+export const watchpartyApi = {
+  getActiveRooms: (userIds) =>
+    request('POST', '/watchparty/rooms/active', { user_ids: userIds }),
+}

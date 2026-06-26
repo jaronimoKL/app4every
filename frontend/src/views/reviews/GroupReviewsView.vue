@@ -65,6 +65,27 @@
 
         <!-- Информация о выбранной группе -->
         <div v-if="activeGroup" class="active-group-sidebar-info">
+          <!-- Активные комнаты -->
+          <div v-if="activeRooms.length > 0" class="active-rooms-sidebar mb-4">
+            <div class="info-divider"></div>
+            <h4>📺 Сейчас смотрят</h4>
+            <div class="rooms-list mt-2 flex flex-col gap-2">
+              <div 
+                v-for="room in activeRooms" 
+                :key="room.room_id" 
+                class="sidebar-room-card glass p-2 rounded cursor-pointer hover:bg-white/5 transition-colors" 
+                @click="$router.push(`/watch/room/${room.room_id}`)"
+              >
+                <div class="text-xs font-semibold flex items-center gap-1.5 text-green-400">
+                  <span class="online-dot-small"></span> Комната {{ room.room_id.substring(0, 4) }}
+                </div>
+                <div class="text-[10px] text-gray-400 mt-1">
+                  Участников: {{ room.participants?.length || 1 }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="info-divider"></div>
           <div class="sidebar-subheader flex justify-between items-center">
             <h4>Участники ({{ activeGroup.members?.length || 0 }})</h4>
@@ -333,16 +354,26 @@
                     </div>
                     <div v-else style="font-size:11px;color:var(--text-muted);font-style:italic;">Ссылок нет</div>
                     
-                    <button
-                      v-if="item.shikimori_id || item.aniliberty_alias || (item.links && item.links.length > 0)"
-                      class="watch-together-btn mt-2"
-                      @click.stop="handleWatchTogether(item)"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
-                        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
-                      </svg>
-                      Смотреть вместе
-                    </button>
+                    <template v-if="getActiveRoomForItem(item)">
+                      <button
+                        class="watch-together-btn mt-2 bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20"
+                        @click.stop="$router.push(`/watch/room/${getActiveRoomForItem(item).room_id}`)"
+                      >
+                        <span class="online-dot-small mr-1.5" style="display:inline-block; vertical-align:middle; margin-bottom:1px;"></span>
+                        Присоединиться к комнате
+                      </button>
+                    </template>
+                    <template v-else-if="item.shikimori_id || item.aniliberty_alias || (item.links && item.links.length > 0)">
+                      <button
+                        class="watch-together-btn mt-2"
+                        @click.stop="handleWatchTogether(item)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                          <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                        </svg>
+                        Смотреть вместе
+                      </button>
+                    </template>
                   </div>
 
                 </div>
@@ -573,7 +604,7 @@
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { useGroupsStore } from '@/stores/groups'
 import { useAuthStore } from '@/stores/auth'
-import { friendsApi } from '@/services/api'
+import { friendsApi, watchpartyApi } from '@/services/api'
 import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
 import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
 import { useRouter } from 'vue-router'
@@ -589,6 +620,28 @@ const searchQuery = ref('')
 const selectedContentType = ref('all')
 
 const friends = ref([])
+const activeRooms = ref([])
+
+async function fetchGroupActiveRooms() {
+  if (!activeGroup.value || !activeGroup.value.members) return
+  try {
+    const userIds = activeGroup.value.members.map(m => m.user_id)
+    if (userIds.length > 0) {
+      const rooms = await watchpartyApi.getActiveRooms(userIds)
+      activeRooms.value = rooms || []
+    }
+  } catch (err) {
+    console.error('Failed to fetch active rooms for group:', err)
+  }
+}
+
+function getActiveRoomForItem(item) {
+  if (!item || !activeRooms.value.length) return null
+  return activeRooms.value.find(r => 
+    (item.shikimori_id && r.shikimori_id === String(item.shikimori_id)) || 
+    (item.aniliberty_alias && r.aniliberty_alias === item.aniliberty_alias)
+  )
+}
 
 // Модалки
 const showInvitesModal = ref(false)
@@ -686,6 +739,7 @@ watch(activeGroupId, async (newId) => {
     
     await groupsStore.fetchGroupDetail(newId)
     groupsStore.connectWS(newId)
+    fetchGroupActiveRooms()
   } else {
     groupsStore.disconnectWS()
   }
@@ -1818,6 +1872,15 @@ function typeColor(type) {
 .quick-status-btn.active {
   background: rgba(99, 102, 241, 0.15);
   border-color: var(--primary);
+}
+
+.online-dot-small {
+  width: 6px;
+  height: 6px;
+  background-color: #4ade80;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
 }
 
 /* Адаптив */
