@@ -1,27 +1,5 @@
 <template>
   <div class="dashboard-page">
-    <!-- ── Навбар ── -->
-    <nav class="navbar glass">
-      <div class="navbar-inner">
-        <!-- Логотип -->
-        <div class="flex items-center gap-3">
-          <div class="logo-mark" style="width:36px;height:36px;font-size:16px;">⬡</div>
-          <span style="font-weight:700;font-size:16px;letter-spacing:-0.02em;">App4Every</span>
-        </div>
-
-        <!-- Правая часть: пользователь + logout -->
-        <div class="flex items-center gap-3">
-          <RouterLink to="/profile" class="user-chip glass" style="text-decoration:none;cursor:pointer;" title="Профиль">
-            <div class="user-avatar">{{ userInitial }}</div>
-            <span class="user-email">{{ auth.user?.username || auth.user?.email }}</span>
-          </RouterLink>
-          <button @click="auth.logout()" class="btn btn-ghost" style="padding:8px 14px;font-size:13px;">
-            Выйти
-          </button>
-        </div>
-      </div>
-    </nav>
-
     <!-- ── Основной контент ── -->
     <main class="dashboard-main">
 

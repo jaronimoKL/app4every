@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -115,7 +116,14 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := hub.NewClient(claims.UserID, username, roomID, conn, h.Hub)
+	
+	_, exists := h.Hub.Get(roomID)
 	room := h.Hub.GetOrCreate(roomID, claims.UserID)
+	
+	if !exists {
+		// This room was just created, notify friends!
+		go h.notifyFriendsRoomCreated(claims.UserID, username, roomID)
+	}
 
 	// Authorization logic
 	isAuthorized := false
@@ -307,5 +315,55 @@ func (h *Handler) handleClientMessage(client *hub.Client, room *hub.Room, msg []
 
 	case "ping":
 		client.Send <- []byte(`{"type":"pong"}`)
+	}
+}
+
+func (h *Handler) notifyFriendsRoomCreated(ownerID int64, ownerName string, roomID string) {
+	// Fetch friends from auth service
+	url := fmt.Sprintf("%s/internal/users/%d/friends", h.Cfg.AuthServiceURL, ownerID)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("notifyFriendsRoomCreated: failed to fetch friends for user %d: %v", ownerID, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("notifyFriendsRoomCreated: auth service returned %d", resp.StatusCode)
+		return
+	}
+
+	var friends []int64
+	if err := json.NewDecoder(resp.Body).Decode(&friends); err != nil {
+		log.Printf("notifyFriendsRoomCreated: failed to decode friends: %v", err)
+		return
+	}
+
+	// Send notification for each friend via auth-service internal endpoint
+	for _, friendID := range friends {
+		payload := map[string]interface{}{
+			"user_id": friendID,
+			"type":    "watchparty_room_created",
+			"message": fmt.Sprintf("Ваш друг %s только что создал комнату!", ownerName),
+			"metadata": map[string]interface{}{
+				"room_id":    roomID,
+				"owner_name": ownerName,
+				"owner_id":   ownerID,
+			},
+		}
+		
+		bodyBytes, _ := json.Marshal(payload)
+		notifyURL := fmt.Sprintf("%s/internal/notifications", h.Cfg.AuthServiceURL)
+		
+		req, _ := http.NewRequest("POST", notifyURL, bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		
+		client := &http.Client{}
+		nResp, err := client.Do(req)
+		if err != nil {
+			log.Printf("notifyFriendsRoomCreated: failed to send notification to friend %d: %v", friendID, err)
+			continue
+		}
+		nResp.Body.Close()
 	}
 }

@@ -11,8 +11,9 @@ type Config struct {
 	DBName     string
 	DBSslMode  string
 	JWTSecret  string
-	RedisHost  string
-	RedisPort  string
+	RedisHost      string
+	RedisPort      string
+	AuthServiceURL string
 }
 
 func LoadConfig() *Config {
@@ -27,6 +28,7 @@ func LoadConfig() *Config {
 		JWTSecret:  getEnv("JWT_SECRET", "change_me_in_production"),
 		RedisHost:  getEnv("REDIS_HOST", "redis"),
 		RedisPort:  getEnv("REDIS_PORT", "6379"),
+		AuthServiceURL: getEnv("AUTH_SERVICE_URL", "http://app4every-auth:8080"),
 	}
 }
 

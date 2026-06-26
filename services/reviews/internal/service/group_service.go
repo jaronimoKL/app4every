@@ -26,7 +26,7 @@ type GroupService interface {
 	DeleteGroup(ctx context.Context, id, ownerID int64) error
 	IsGroupMember(ctx context.Context, groupID, userID int64) (bool, error)
 
-	InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) error
+	InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) (int64, error)
 	ListInvites(ctx context.Context, userID int64) ([]*model.GroupInvite, error)
 	AcceptInvite(ctx context.Context, inviteID, userID int64) (int64, error)
 	DeclineInvite(ctx context.Context, inviteID, userID int64) error
@@ -90,30 +90,30 @@ func (s *groupService) IsGroupMember(ctx context.Context, groupID, userID int64)
 	return s.groupRepo.IsGroupMember(ctx, groupID, userID)
 }
 
-func (s *groupService) InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) error {
+func (s *groupService) InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) (int64, error) {
 	// Проверим, что приглашающий - член или владелец группы
 	isMember, err := s.groupRepo.IsGroupMember(ctx, groupID, inviterID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if !isMember {
-		return ErrUnauthorized
+		return 0, ErrUnauthorized
 	}
 
-	err = s.groupRepo.InviteUser(ctx, groupID, inviterID, identifier)
+	targetID, err := s.groupRepo.InviteUser(ctx, groupID, inviterID, identifier)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			return ErrUserNotFound
+			return 0, ErrUserNotFound
 		}
 		if errors.Is(err, repository.ErrAlreadyMember) {
-			return ErrAlreadyMember
+			return 0, ErrAlreadyMember
 		}
 		if errors.Is(err, repository.ErrAlreadyInvited) {
-			return ErrAlreadyInvited
+			return 0, ErrAlreadyInvited
 		}
-		return err
+		return 0, err
 	}
-	return nil
+	return targetID, nil
 }
 
 func (s *groupService) ListInvites(ctx context.Context, userID int64) ([]*model.GroupInvite, error) {

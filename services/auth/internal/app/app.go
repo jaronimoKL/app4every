@@ -13,6 +13,7 @@ import (
 	"app4every/services/auth/internal/database"
 	delivery "app4every/services/auth/internal/delivery/http"
 	v1 "app4every/services/auth/internal/delivery/http/v1"
+	"app4every/services/auth/internal/hub"
 	"app4every/services/auth/internal/repository"
 	"app4every/services/auth/internal/service"
 )
@@ -37,12 +38,18 @@ func Run() error {
 	// 3. Репозитории
 	userRepo := repository.NewUserRepository(dbPool)
 	sessionRepo := repository.NewSessionRepository(redisClient)
+	notificationRepo := repository.NewNotificationRepo(dbPool)
 
 	// 4. Сервисы
 	authService := service.NewAuthService(cfg, userRepo, sessionRepo)
+	
+	notificationHub := hub.NewNotificationHub()
+	notificationService := service.NewNotificationService(notificationRepo, notificationHub)
+	authService.SetNotificationService(notificationService) // We will add this method to send friend requests
 
 	// 5. Хэндлеры
 	authHandler := v1.NewAuthHandler(authService)
+	notificationHandler := v1.NewNotificationHandler(notificationService, notificationHub)
 
 	// 6. Роутер
 	mux := http.NewServeMux()
@@ -83,6 +90,8 @@ func Run() error {
 		}
 		http.NotFound(w, r)
 	})
+	
+	mux.HandleFunc("/internal/notifications", notificationHandler.InternalSendNotification)
 
 	// ── Защищённые маршруты ──
 	// Все маршруты в protectedMux проходят через AuthMiddleware.
@@ -120,8 +129,17 @@ func Run() error {
 	protectedMux.HandleFunc("/api/v1/users/friends/decline", authHandler.DeclineFriend)
 	protectedMux.HandleFunc("/api/v1/users/search", authHandler.SearchUsers)
 
+	// Уведомления
+	protectedMux.HandleFunc("/api/v1/auth/notifications", notificationHandler.GetNotifications)
+	protectedMux.HandleFunc("/api/v1/auth/notifications/read", notificationHandler.MarkAsRead)
+	protectedMux.HandleFunc("/api/v1/auth/notifications/", notificationHandler.DeleteNotification)
+	protectedMux.HandleFunc("/api/v1/auth/ws/notifications", notificationHandler.ServeWS)
+
 	// Регистрируем защищённые префиксы в основном мультиплексоре
 	mux.Handle("/api/v1/auth/me", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/auth/notifications", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/auth/notifications/", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/auth/ws/notifications", authMiddleware(protectedMux))
 	mux.Handle("/api/v1/users/", authMiddleware(protectedMux)) // /users/ — суффикс "/" = префикс-матчинг
 
 	server := &http.Server{

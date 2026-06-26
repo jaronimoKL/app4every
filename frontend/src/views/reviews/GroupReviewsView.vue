@@ -356,19 +356,19 @@
                     
                     <template v-if="getActiveRoomForItem(item)">
                       <button
-                        class="watch-together-btn mt-2 bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20"
+                        class="watch-together-btn mt-2 flex items-center justify-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all rounded-md px-3 py-1.5 text-xs font-semibold"
                         @click.stop="$router.push(`/watch/room/${getActiveRoomForItem(item).room_id}`)"
                       >
-                        <span class="online-dot-small mr-1.5" style="display:inline-block; vertical-align:middle; margin-bottom:1px;"></span>
-                        Присоединиться к комнате
+                        <span class="online-dot-small" style="display:inline-block; vertical-align:middle; margin-bottom:1px;"></span>
+                        Присоединиться к просмотру
                       </button>
                     </template>
                     <template v-else-if="item.shikimori_id || item.aniliberty_alias || (item.links && item.links.length > 0)">
                       <button
-                        class="watch-together-btn mt-2"
+                        class="watch-together-btn mt-2 flex items-center justify-center gap-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/20 transition-all rounded-md px-3 py-1.5 text-xs font-semibold"
                         @click.stop="handleWatchTogether(item)"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5">
                           <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
                         </svg>
                         Смотреть вместе

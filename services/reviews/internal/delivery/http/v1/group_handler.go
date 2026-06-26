@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"app4every/services/reviews/internal/config"
 	"app4every/services/reviews/internal/model"
 	"app4every/services/reviews/internal/service"
 	"github.com/gorilla/websocket"
@@ -22,12 +24,14 @@ var upgrader = websocket.Upgrader{
 type GroupHandler struct {
 	svc service.GroupService
 	hub *Hub
+	cfg *config.Config
 }
 
-func NewGroupHandler(svc service.GroupService, hub *Hub) *GroupHandler {
+func NewGroupHandler(svc service.GroupService, hub *Hub, cfg *config.Config) *GroupHandler {
 	return &GroupHandler{
 		svc: svc,
 		hub: hub,
+		cfg: cfg,
 	}
 }
 
@@ -289,7 +293,7 @@ func (h *GroupHandler) HandleGroupsByID(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		err := h.svc.InviteUser(r.Context(), pp.GroupID, uid, req.Identifier)
+		targetID, err := h.svc.InviteUser(r.Context(), pp.GroupID, uid, req.Identifier)
 		if err != nil {
 			if errors.Is(err, service.ErrUnauthorized) {
 				writeError(w, http.StatusForbidden, "forbidden", "not authorized to invite")
@@ -310,6 +314,8 @@ func (h *GroupHandler) HandleGroupsByID(w http.ResponseWriter, r *http.Request) 
 			writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
 			return
 		}
+
+		go h.notifyGroupInvite(targetID, uid, pp.GroupID)
 
 		writeJSON(w, http.StatusOK, map[string]string{"status": "invited"})
 		return
@@ -559,4 +565,32 @@ func (h *GroupHandler) handleWS(w http.ResponseWriter, r *http.Request, groupID 
 			break
 		}
 	}
+}
+
+func (h *GroupHandler) notifyGroupInvite(targetID, inviterID, groupID int64) {
+	// Let's get the group name
+	// It's not strictly necessary, but helpful. We'll skip groupName lookup for simplicity here.
+	payload := map[string]interface{}{
+		"user_id": targetID,
+		"type":    "group_invite",
+		"message": "Вас пригласили в новую групповую рецензию",
+		"metadata": map[string]interface{}{
+			"group_id":   groupID,
+			"inviter_id": inviterID,
+		},
+	}
+
+	bodyBytes, _ := json.Marshal(payload)
+	notifyURL := fmt.Sprintf("%s/internal/notifications", h.cfg.AuthServiceURL)
+
+	req, _ := http.NewRequest("POST", notifyURL, bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	nResp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("notifyGroupInvite: failed to send notification: %v\n", err)
+		return
+	}
+	defer nResp.Body.Close()
 }

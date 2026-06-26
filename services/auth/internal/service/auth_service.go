@@ -48,12 +48,15 @@ type AuthService interface {
 	DeclineRequest(ctx context.Context, userID, targetID int64) error
 	DeleteFriend(ctx context.Context, userID, targetID int64) error
 	SearchUsers(ctx context.Context, q string, excludeID int64) ([]*model.User, error)
+	
+	SetNotificationService(svc NotificationService)
 }
 
 type authService struct {
 	cfg         *config.Config
 	userRepo    repository.UserRepository
 	sessionRepo repository.SessionRepository
+	notifSvc    NotificationService
 }
 
 func NewAuthService(cfg *config.Config, userRepo repository.UserRepository, sessionRepo repository.SessionRepository) AuthService {
@@ -62,6 +65,10 @@ func NewAuthService(cfg *config.Config, userRepo repository.UserRepository, sess
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
 	}
+}
+
+func (s *authService) SetNotificationService(svc NotificationService) {
+	s.notifSvc = svc
 }
 
 // ── Auth ──
@@ -273,7 +280,20 @@ func (s *authService) SendRequest(ctx context.Context, userID int64, identifier 
 		}
 	}
 
-	return s.userRepo.CreateFriendship(ctx, userID, targetUser.ID, "pending")
+	err = s.userRepo.CreateFriendship(ctx, userID, targetUser.ID, "pending")
+	if err == nil && s.notifSvc != nil {
+		sender, _ := s.userRepo.GetByID(ctx, userID)
+		senderName := "Пользователь"
+		if sender != nil {
+			senderName = sender.Username
+		}
+		
+		s.notifSvc.SendNotification(ctx, targetUser.ID, "friend_request", senderName+" отправил вам заявку в друзья", map[string]interface{}{
+			"sender_id":   userID,
+			"sender_name": senderName,
+		})
+	}
+	return err
 }
 
 func (s *authService) AcceptRequest(ctx context.Context, userID, targetID int64) error {

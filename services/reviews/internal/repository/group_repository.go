@@ -30,7 +30,7 @@ type GroupRepository interface {
 	IsGroupOwner(ctx context.Context, groupID, userID int64) (bool, error)
 
 	// Члены и приглашения
-	InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) error
+	InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) (int64, error)
 	ListInvites(ctx context.Context, userID int64) ([]*model.GroupInvite, error)
 	AcceptInvite(ctx context.Context, inviteID, userID int64) (int64, error) // Возвращает groupID
 	DeclineInvite(ctx context.Context, inviteID, userID int64) error
@@ -191,7 +191,7 @@ func (r *postgresGroupRepository) IsGroupOwner(ctx context.Context, groupID, use
 
 // ── Члены и приглашения ──
 
-func (r *postgresGroupRepository) InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) error {
+func (r *postgresGroupRepository) InviteUser(ctx context.Context, groupID, inviterID int64, identifier string) (int64, error) {
 	var targetID int64
 	var err error
 
@@ -204,29 +204,29 @@ func (r *postgresGroupRepository) InviteUser(ctx context.Context, groupID, invit
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrUserNotFound
+			return 0, ErrUserNotFound
 		}
-		return err
+		return 0, err
 	}
 
 	// Проверяем членство
 	var isMember bool
 	err = r.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2)", groupID, targetID).Scan(&isMember)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if isMember {
-		return ErrAlreadyMember
+		return 0, ErrAlreadyMember
 	}
 
 	// Проверяем наличие активного приглашения
 	var isInvited bool
 	err = r.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM group_invites WHERE group_id = $1 AND invitee_id = $2 AND status = 'pending')", groupID, targetID).Scan(&isInvited)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if isInvited {
-		return ErrAlreadyInvited
+		return 0, ErrAlreadyInvited
 	}
 
 	// Вставляем или обновляем статус приглашения
@@ -235,7 +235,7 @@ func (r *postgresGroupRepository) InviteUser(ctx context.Context, groupID, invit
 		VALUES ($1, $2, $3, 'pending', NOW())
 		ON CONFLICT (group_id, invitee_id) DO UPDATE SET status = 'pending', created_at = NOW()
 	`, groupID, inviterID, targetID)
-	return err
+	return targetID, err
 }
 
 func (r *postgresGroupRepository) ListInvites(ctx context.Context, userID int64) ([]*model.GroupInvite, error) {

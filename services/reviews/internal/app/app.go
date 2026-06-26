@@ -30,7 +30,7 @@ func Run() error {
 	groupRepo := repository.NewGroupRepository(dbPool)
 	groupSvc  := service.NewGroupService(groupRepo, repo)
 	hub       := v1.NewHub()
-	groupHandler := v1.NewGroupHandler(groupSvc, hub)
+	groupHandler := v1.NewGroupHandler(groupSvc, hub, cfg)
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),

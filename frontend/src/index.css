@@ -11,28 +11,68 @@
 
 /* ── CSS-переменные (токены дизайн-системы) ── */
 :root {
-  --bg-base:        #07090f;
-  --bg-surface:     #0d1220;
-  --bg-elevated:    #111827;
+  /* Macchiato theme (Dark blue with violet tints) - Default */
+  --bg-base:        #0B0E14;
+  --bg-surface:     #131A26;
+  --bg-elevated:    #1C263A;
 
-  --primary:        #6366f1;
-  --primary-hover:  #4f46e5;
-  --primary-glow:   rgba(99, 102, 241, 0.35);
+  --primary:        #7C3AED;
+  --primary-hover:  #6D28D9;
+  --primary-glow:   rgba(124, 58, 237, 0.35);
 
-  --violet:         #8b5cf6;
-  --cyan:           #06b6d4;
+  --violet:         #8B5CF6;
+  --cyan:           #06B6D4;
 
   --border:         rgba(255, 255, 255, 0.08);
-  --border-hover:   rgba(99, 102, 241, 0.5);
+  --border-hover:   rgba(124, 58, 237, 0.5);
 
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
+  --text-primary:   #F8FAFC;
+  --text-secondary: #94A3B8;
   --text-muted:     #475569;
+
+  --glass-bg:       rgba(255, 255, 255, 0.03);
+  --glass-hover-bg: rgba(124, 58, 237, 0.06);
+
+  --btn-ghost-bg:       rgba(255, 255, 255, 0.05);
+  --btn-ghost-hover-bg: rgba(255, 255, 255, 0.08);
+  --btn-ghost-border:   rgba(255, 255, 255, 0.15);
+
+  --form-bg: rgba(255, 255, 255, 0.04);
 
   --radius-sm:  8px;
   --radius-md:  12px;
   --radius-lg:  16px;
   --radius-xl:  24px;
+}
+
+[data-theme='latte'] {
+  /* Latte theme (Soft grey/light with subtle tints) */
+  --bg-base:        #F8F9FA;
+  --bg-surface:     #FFFFFF;
+  --bg-elevated:    #E9ECEF;
+
+  --primary:        #6366F1;
+  --primary-hover:  #4F46E5;
+  --primary-glow:   rgba(99, 102, 241, 0.25);
+
+  --violet:         #8B5CF6;
+  --cyan:           #06B6D4;
+
+  --border:         rgba(0, 0, 0, 0.08);
+  --border-hover:   rgba(99, 102, 241, 0.4);
+
+  --text-primary:   #1E293B;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+
+  --glass-bg:       rgba(0, 0, 0, 0.02);
+  --glass-hover-bg: rgba(99, 102, 241, 0.04);
+
+  --btn-ghost-bg:       rgba(0, 0, 0, 0.04);
+  --btn-ghost-hover-bg: rgba(0, 0, 0, 0.08);
+  --btn-ghost-border:   rgba(0, 0, 0, 0.15);
+
+  --form-bg: rgba(0, 0, 0, 0.03);
 }
 
 /* ── Base ── */
@@ -96,7 +136,7 @@ body {
 
 /* ── Стекло (Glassmorphism) ── */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
@@ -106,8 +146,8 @@ body {
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 .glass-hover:hover {
-  background: rgba(99, 102, 241, 0.06);
-  border-color: rgba(99, 102, 241, 0.25);
+  background: var(--glass-hover-bg);
+  border-color: var(--border-hover);
   transform: translateY(-2px);
 }
 
@@ -153,14 +193,14 @@ body {
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--btn-ghost-bg);
   color: var(--text-secondary);
   border: 1px solid var(--border);
 }
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--btn-ghost-hover-bg);
   color: var(--text-primary);
-  border-color: rgba(255,255,255,0.15);
+  border-color: var(--btn-ghost-border);
 }
 
 .btn-outline {
@@ -188,7 +228,7 @@ body {
 }
 
 .form-input {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--form-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-primary);

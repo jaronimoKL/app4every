@@ -1,22 +1,5 @@
 <template>
   <div class="profile-page">
-    <!-- Навбар -->
-    <nav class="navbar glass">
-      <div class="navbar-inner">
-        <div class="flex items-center gap-3">
-          <RouterLink to="/dashboard" class="btn btn-ghost" style="padding:7px 12px;font-size:13px;gap:6px;">
-            ← Назад
-          </RouterLink>
-          <div class="nav-sep"></div>
-          <div class="logo-mark" style="width:32px;height:32px;font-size:14px;">⬡</div>
-          <span style="font-weight:700;font-size:15px;">Профиль</span>
-        </div>
-        <button @click="auth.logout()" class="btn btn-ghost" style="padding:7px 14px;font-size:13px;">
-          Выйти
-        </button>
-      </div>
-    </nav>
-
     <main class="profile-main">
       <div class="profile-header">
         <div class="profile-avatar">{{ userInitial }}</div>
@@ -520,7 +503,7 @@ function showFriendsMsg(text, type) {
 
 /* Основной контент */
 .profile-main {
-  max-width: 680px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 40px 24px 80px;
   display: flex;
