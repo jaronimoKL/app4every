@@ -436,6 +436,12 @@ func (h *AuthHandler) ShikimoriLogin(w http.ResponseWriter, r *http.Request) {
 	url := fmt.Sprintf("https://shikimori.one/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
 		cfg.ShikimoriClientID, cfg.ShikimoriRedirectURI)
 	
+	// Передаем токен через параметр state, чтобы Shikimori вернул его нам в callback
+	tokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if tokenString != "" {
+		url += "&state=" + tokenString
+	}
+	
 	writeJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 

@@ -18,18 +18,30 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, `{"error":"unauthorized","message":"missing authorization header"}`, http.StatusUnauthorized)
+			var tokenString string
+			
+			if authHeader != "" {
+				parts := strings.Split(authHeader, " ")
+				if len(parts) == 2 && parts[0] == "Bearer" {
+					tokenString = parts[1]
+				}
+			}
+
+			// Если токена нет в заголовке, проверяем query параметры (для OAuth и WebSocket)
+			if tokenString == "" {
+				tokenString = r.URL.Query().Get("token")
+			}
+			if tokenString == "" {
+				// Shikimori возвращает token в параметре state
+				tokenString = r.URL.Query().Get("state")
+			}
+
+			if tokenString == "" {
+				http.Error(w, `{"error":"unauthorized","message":"missing token"}`, http.StatusUnauthorized)
 				return
 			}
 
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || parts[0] != "Bearer" {
-				http.Error(w, `{"error":"unauthorized","message":"invalid authorization format"}`, http.StatusUnauthorized)
-				return
-			}
 
-			tokenString := parts[1]
 			token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])

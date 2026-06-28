@@ -392,8 +392,20 @@ async function generateInvite() {
   }
 }
 
-function linkShikimori() {
-  window.location.href = '/api/v1/auth/shikimori/login'
+async function linkShikimori() {
+  try {
+    const res = await fetch('/api/v1/auth/shikimori/login', {
+      headers: { 'Authorization': `Bearer ${auth.accessToken}` }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      window.location.href = data.url
+    } else {
+      console.error('Failed to get Shikimori auth URL')
+    }
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 async function handleProfileUpdate() {

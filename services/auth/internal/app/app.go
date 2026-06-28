@@ -182,6 +182,8 @@ func Run() error {
 	mux.Handle("/api/v1/auth/notifications", authMiddleware(protectedMux))
 	mux.Handle("/api/v1/auth/notifications/", authMiddleware(protectedMux))
 	mux.Handle("/api/v1/auth/ws/notifications", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/auth/shikimori/", authMiddleware(protectedMux))
+	mux.Handle("/api/v1/auth/invites", authMiddleware(protectedMux))
 	mux.Handle("/api/v1/users/", authMiddleware(protectedMux)) // /users/ — суффикс "/" = префикс-матчинг
 
 	server := &http.Server{
