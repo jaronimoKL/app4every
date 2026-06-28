@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -433,16 +434,17 @@ func (h *AuthHandler) ShikimoriLogin(w http.ResponseWriter, r *http.Request) {
 
 	cfg := h.authService.GetConfig()
 	
-	url := fmt.Sprintf("https://shikimori.one/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
-		cfg.ShikimoriClientID, cfg.ShikimoriRedirectURI)
+	encodedRedirectURI := url.QueryEscape(cfg.ShikimoriRedirectURI)
+	authUrl := fmt.Sprintf("https://shikimori.one/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
+		cfg.ShikimoriClientID, encodedRedirectURI)
 	
 	// Передаем токен через параметр state, чтобы Shikimori вернул его нам в callback
 	tokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if tokenString != "" {
-		url += "&state=" + tokenString
+		authUrl += "&state=" + tokenString
 	}
 	
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	writeJSON(w, http.StatusOK, map[string]string{"url": authUrl})
 }
 
 // GET /api/v1/auth/shikimori/callback
