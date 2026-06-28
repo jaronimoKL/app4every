@@ -402,7 +402,7 @@ func (s *authService) SendRequest(ctx context.Context, userID int64, identifier 
 		s.notifSvc.SendNotification(ctx, targetUser.ID, "friend_request", senderName+" отправил вам заявку в друзья", map[string]interface{}{
 			"sender_id":   userID,
 			"sender_name": senderName,
-		})
+		}, false)
 	}
 	return err
 }
