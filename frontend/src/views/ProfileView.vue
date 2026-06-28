@@ -258,11 +258,55 @@
               <div style="font-size:12px;color:var(--text-muted);">Refresh-токены хранятся в Redis. При выходе — сессия удаляется.</div>
             </div>
           </div>
-          <div class="security-item">
-            <span class="security-icon">🍪</span>
+        </div>
+      </section>
+
+      <!-- ── Секция 4: Интеграции ── -->
+      <section class="profile-card glass">
+        <div class="card-header">
+          <h2 class="card-title">Интеграции</h2>
+          <p class="card-desc">Подключите внешние сервисы</p>
+        </div>
+        <div class="security-info">
+          <div class="security-item flex justify-between items-center" style="width:100%">
+            <div class="flex items-center gap-3">
+              <span class="security-icon" style="background:#2563eb; color:white;">S</span>
+              <div>
+                <div style="font-size:14px;font-weight:500;">Shikimori</div>
+                <div style="font-size:12px;color:var(--text-muted);">Синхронизация списков аниме</div>
+              </div>
+            </div>
+            <button class="btn btn-outline" @click="linkShikimori">
+              Подключить
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Секция 5: Инвайт-коды ── -->
+      <section class="profile-card glass">
+        <div class="card-header">
+          <h2 class="card-title">Инвайт-коды</h2>
+          <p class="card-desc">Создавайте инвайты для друзей (они автоматически добавятся в друзья)</p>
+        </div>
+        
+        <div class="form-actions" style="margin-bottom:16px;">
+          <button class="btn btn-primary" @click="generateInvite" :disabled="inviteLoading">
+            <span v-if="inviteLoading" class="spinner"></span>
+            <span>Создать инвайт-код</span>
+          </button>
+        </div>
+
+        <div v-if="invites.length === 0" class="empty-tab-text">
+          У вас пока нет инвайт-кодов
+        </div>
+        <div v-else class="friends-list">
+          <div v-for="inv in invites" :key="inv.id" class="friend-item flex items-center justify-between">
             <div>
-              <div style="font-size:14px;font-weight:500;">HttpOnly Cookie</div>
-              <div style="font-size:12px;color:var(--text-muted);">Refresh-токен недоступен JS — защита от XSS.</div>
+              <div style="font-size:14px;font-family:monospace;font-weight:bold;">{{ inv.code }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">
+                Статус: {{ inv.used_by ? 'Использован (User ' + inv.used_by + ')' : 'Активен' }}
+              </div>
             </div>
           </div>
         </div>
@@ -306,12 +350,51 @@ const requests = ref([])
 const friendsMsg = reactive({ text: '', type: 'success' })
 const copied = ref(false)
 
+// ── Инвайт-коды ──
+const invites = ref([])
+const inviteLoading = ref(false)
+
 onMounted(async () => {
   // Заполняем форму текущими данными пользователя
   profileForm.username = auth.user?.username || ''
   profileForm.email = auth.user?.email || ''
   await loadFriendsData()
+  await loadInvites()
 })
+
+async function loadInvites() {
+  try {
+    const res = await fetch('/api/v1/auth/invites', {
+      headers: { 'Authorization': `Bearer ${auth.accessToken}` }
+    })
+    if (res.ok) {
+      invites.value = await res.json()
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function generateInvite() {
+  inviteLoading.value = true
+  try {
+    const res = await fetch('/api/v1/auth/invites', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${auth.accessToken}` }
+    })
+    if (res.ok) {
+      await loadInvites()
+    }
+  } catch (err) {
+    console.error(err)
+  } finally {
+    inviteLoading.value = false
+  }
+}
+
+function linkShikimori() {
+  window.location.href = '/api/v1/auth/shikimori/login'
+}
 
 async function handleProfileUpdate() {
   profileMsg.text = ''

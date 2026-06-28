@@ -105,6 +105,20 @@
               <span v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email }}</span>
             </div>
 
+            <div class="form-group">
+              <label class="form-label" for="inviteCode">Инвайт-код</label>
+              <input
+                id="inviteCode"
+                v-model="inviteCode"
+                type="text"
+                class="form-input"
+                :class="{ error: fieldErrors.inviteCode }"
+                placeholder="xxxx-xxxx"
+                required
+              />
+              <span v-if="fieldErrors.inviteCode" class="field-error">{{ fieldErrors.inviteCode }}</span>
+            </div>
+
             <button
               type="submit"
               class="btn btn-primary"
@@ -134,19 +148,21 @@ const auth = useAuthStore()
 
 const username = ref('')
 const email    = ref('')
-const password = ref('')
-const confirm  = ref('')
-const errorMsg = ref('')
+const password   = ref('')
+const confirm    = ref('')
+const inviteCode = ref('')
+const errorMsg   = ref('')
 const success  = ref(false)
 const loading  = ref(false)
 
-const fieldErrors = reactive({ username: '', email: '', password: '', confirm: '' })
+const fieldErrors = reactive({ username: '', email: '', password: '', confirm: '', inviteCode: '' })
 
 function validate() {
   fieldErrors.username = ''
-  fieldErrors.email    = ''
-  fieldErrors.password = ''
-  fieldErrors.confirm  = ''
+  fieldErrors.email      = ''
+  fieldErrors.password   = ''
+  fieldErrors.confirm    = ''
+  fieldErrors.inviteCode = ''
   let ok = true
 
   if (username.value.length < 3) {
@@ -172,6 +188,10 @@ function validate() {
     fieldErrors.confirm = 'Пароли не совпадают'
     ok = false
   }
+  if (!inviteCode.value) {
+    fieldErrors.inviteCode = 'Введите инвайт-код'
+    ok = false
+  }
   return ok
 }
 
@@ -180,7 +200,7 @@ async function handleRegister() {
   if (!validate()) return
 
   loading.value = true
-  const result = await auth.register(username.value, email.value, password.value)
+  const result = await auth.register(username.value, email.value, password.value, inviteCode.value)
   loading.value = false
 
   if (result.success) {
@@ -190,7 +210,7 @@ async function handleRegister() {
     if (status === 409) {
       errorMsg.value = 'Этот email или логин уже занят'
     } else {
-      errorMsg.value = 'Ошибка регистрации. Попробуйте позже.'
+      errorMsg.value = result.error?.message || 'Ошибка регистрации. Проверьте инвайт-код.'
     }
   }
 }

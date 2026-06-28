@@ -1,0 +1,77 @@
+package service
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+)
+
+func (s *authService) ShikimoriCallback(ctx context.Context, userID int64, code string) error {
+	// 1. Обменять code на access_token и refresh_token
+	tokenURL := "https://shikimori.one/oauth/token"
+	payload := map[string]string{
+		"grant_type":    "authorization_code",
+		"client_id":     s.cfg.ShikimoriClientID,
+		"client_secret": s.cfg.ShikimoriClientSecret,
+		"code":          code,
+		"redirect_uri":  s.cfg.ShikimoriRedirectURI,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+	
+	req, _ := http.NewRequest("POST", tokenURL, bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "App4Every")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to make request to Shikimori token endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("shikimori returned non-200 status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return fmt.Errorf("failed to decode shikimori token response: %w", err)
+	}
+
+	// 2. Получить ID пользователя в Shikimori (/api/users/whoami)
+	whoamiURL := "https://shikimori.one/api/users/whoami"
+	wReq, _ := http.NewRequest("GET", whoamiURL, nil)
+	wReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+	wReq.Header.Set("User-Agent", "App4Every")
+
+	wResp, err := client.Do(wReq)
+	if err != nil {
+		return fmt.Errorf("failed to get shikimori user info: %w", err)
+	}
+	defer wResp.Body.Close()
+
+	if wResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("shikimori whoami returned non-200 status %d", wResp.StatusCode)
+	}
+
+	var whoamiResp struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.NewDecoder(wResp.Body).Decode(&whoamiResp); err != nil {
+		return fmt.Errorf("failed to decode shikimori whoami response: %w", err)
+	}
+
+	// 3. Сохранить токены и shikimori_user_id в БД
+	if err := s.userRepo.UpdateShikimoriTokens(ctx, userID, tokenResp.AccessToken, tokenResp.RefreshToken, whoamiResp.ID); err != nil {
+		return fmt.Errorf("failed to save shikimori tokens to db: %w", err)
+	}
+
+	return nil
+}

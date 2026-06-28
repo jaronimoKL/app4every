@@ -6,11 +6,15 @@ import "time"
 // json:"-" означает что поле никогда не попадёт в JSON-ответ (хэш пароля).
 type User struct {
 	ID           int64     `json:"id"`
-	Username     string    `json:"username"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Username              string    `json:"username"`
+	Email                 string    `json:"email"`
+	EmailVerified         bool      `json:"email_verified"`
+	PasswordHash          string    `json:"-"`
+	ShikimoriAccessToken  *string   `json:"shikimori_access_token,omitempty"`
+	ShikimoriRefreshToken *string   `json:"-"`
+	ShikimoriUserID       *int64    `json:"shikimori_user_id,omitempty"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 type Friendship struct {
@@ -24,9 +28,10 @@ type Friendship struct {
 // --- Запросы Auth ---
 
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`   // опционально — можно регистрироваться только с логином
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Email      string `json:"email"`   // опционально — можно регистрироваться только с логином
+	Password   string `json:"password"`
+	InviteCode string `json:"invite_code"` // Required for registration
 }
 
 type LoginRequest struct {
@@ -54,7 +59,7 @@ type ChangePasswordRequest struct {
 // --- Запросы сброса пароля ---
 
 type ForgotPasswordRequest struct {
-	Email string `json:"email"`
+	Identifier string `json:"identifier"`
 }
 
 type ResetPasswordRequest struct {

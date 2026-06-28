@@ -122,17 +122,18 @@ func (h *NotificationHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 // POST /internal/notifications
 func (h *NotificationHandler) InternalSendNotification(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		UserID   int64                  `json:"user_id"`
-		Type     string                 `json:"type"`
-		Message  string                 `json:"message"`
-		Metadata map[string]interface{} `json:"metadata"`
+		UserID    int64                  `json:"user_id"`
+		Type      string                 `json:"type"`
+		Message   string                 `json:"message"`
+		Metadata  map[string]interface{} `json:"metadata"`
+		Transient bool                   `json:"transient"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := h.svc.SendNotification(r.Context(), req.UserID, req.Type, req.Message, req.Metadata); err != nil {
+	if err := h.svc.SendNotification(r.Context(), req.UserID, req.Type, req.Message, req.Metadata, req.Transient); err != nil {
 		log.Printf("InternalSendNotification error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

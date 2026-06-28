@@ -76,5 +76,40 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);`)
 	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id);`)
 
+	// 000004_add_shikimori_tokens
+	_, _ = pool.Exec(ctx, `
+		ALTER TABLE users 
+		ADD COLUMN IF NOT EXISTS shikimori_access_token TEXT,
+		ADD COLUMN IF NOT EXISTS shikimori_refresh_token TEXT,
+		ADD COLUMN IF NOT EXISTS shikimori_user_id BIGINT;
+	`)
+
+	// 000005_add_invite_codes
+	_, _ = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS invite_codes (
+			id SERIAL PRIMARY KEY,
+			code VARCHAR(50) UNIQUE NOT NULL,
+			created_by BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			used_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			used_at TIMESTAMP WITH TIME ZONE
+		);
+	`)
+	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON invite_codes(code);`)
+
+	// 000006_password_resets
+	_, _ = pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;`)
+	_, _ = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS verification_tokens (
+			id SERIAL PRIMARY KEY,
+			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token VARCHAR(100) UNIQUE NOT NULL,
+			purpose VARCHAR(50) NOT NULL, -- 'email_verify', 'password_reset'
+			expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+	_, _ = pool.Exec(ctx, `CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token);`)
+
 	return pool, nil
 }

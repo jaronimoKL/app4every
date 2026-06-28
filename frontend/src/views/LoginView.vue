@@ -30,14 +30,14 @@
         <!-- Форма -->
         <form @submit.prevent="handleLogin" class="auth-form">
           <div class="form-group">
-            <label class="form-label" for="identifier">Email или логин</label>
+            <label class="form-label" for="identifier">Логин или Email</label>
             <input
               id="identifier"
               v-model="identifier"
               type="text"
               class="form-input"
               :class="{ error: !!errorMsg }"
-              placeholder="email или логин"
+              placeholder="Логин или Email"
               autocomplete="username"
               required
             />

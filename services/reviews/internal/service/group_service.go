@@ -179,6 +179,8 @@ func (s *groupService) AddGroupItem(ctx context.Context, groupID, userID int64, 
 		s.syncCompletedToAllMembers(ctx, groupID, item, groupName)
 	}
 
+	go s.syncShikimori(context.Background(), userID, item)
+
 	return item, nil
 }
 
@@ -209,6 +211,8 @@ func (s *groupService) UpdateGroupItem(ctx context.Context, groupID, itemID, use
 	if item.Status == model.StatusCompleted {
 		s.syncCompletedToAllMembers(ctx, groupID, item, groupName)
 	}
+
+	go s.syncShikimori(context.Background(), userID, item)
 
 	return item, nil
 }

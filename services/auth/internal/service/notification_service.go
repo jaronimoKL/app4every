@@ -8,7 +8,7 @@ import (
 )
 
 type NotificationService interface {
-	SendNotification(ctx context.Context, userID int64, notifType, message string, metadata map[string]interface{}) error
+	SendNotification(ctx context.Context, userID int64, notifType, message string, metadata map[string]interface{}, transient bool) error
 	GetUserNotifications(ctx context.Context, userID int64) ([]*repository.Notification, error)
 	MarkAsRead(ctx context.Context, userID int64, notificationIDs []int64) error
 	DeleteNotification(ctx context.Context, userID int64, notificationID int64) error
@@ -26,7 +26,7 @@ func NewNotificationService(repo repository.NotificationRepo, notificationHub *h
 	}
 }
 
-func (s *notificationService) SendNotification(ctx context.Context, userID int64, notifType, message string, metadata map[string]interface{}) error {
+func (s *notificationService) SendNotification(ctx context.Context, userID int64, notifType, message string, metadata map[string]interface{}, transient bool) error {
 	n := &repository.Notification{
 		UserID:   userID,
 		Type:     notifType,
@@ -34,9 +34,11 @@ func (s *notificationService) SendNotification(ctx context.Context, userID int64
 		Metadata: metadata,
 	}
 
-	// 1. Save to DB
-	if err := s.repo.Create(ctx, n); err != nil {
-		return err
+	// 1. Save to DB if not transient
+	if !transient {
+		if err := s.repo.Create(ctx, n); err != nil {
+			return err
+		}
 	}
 
 	// 2. Broadcast via WS

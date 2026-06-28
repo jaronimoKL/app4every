@@ -19,10 +19,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ── Действия ──
 
-  async function register(username, email, password) {
+  async function register(username, email, password, inviteCode) {
     loading.value = true
     try {
-      await authApi.register(username, email, password)
+      await authApi.register(username, email, password, inviteCode)
       return { success: true }
     } catch (err) {
       return { success: false, error: err }

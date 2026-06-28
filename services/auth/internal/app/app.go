@@ -39,9 +39,12 @@ func Run() error {
 	userRepo := repository.NewUserRepository(dbPool)
 	sessionRepo := repository.NewSessionRepository(redisClient)
 	notificationRepo := repository.NewNotificationRepo(dbPool)
+	inviteRepo := repository.NewInviteRepository(dbPool)
+	tokenRepo := repository.NewVerificationTokenRepository(dbPool)
 
 	// 4. Сервисы
-	authService := service.NewAuthService(cfg, userRepo, sessionRepo)
+	mailerSvc := service.NewMailerService(cfg)
+	authService := service.NewAuthService(cfg, userRepo, sessionRepo, inviteRepo, tokenRepo, mailerSvc)
 	
 	notificationHub := hub.NewNotificationHub()
 	notificationService := service.NewNotificationService(notificationRepo, notificationHub)
@@ -88,6 +91,30 @@ func Run() error {
 			json.NewEncoder(w).Encode(friendIDs)
 			return
 		}
+		if len(parts) == 2 && parts[1] == "shikimori" {
+			userID, err := strconv.ParseInt(parts[0], 10, 64)
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusBadRequest)
+				return
+			}
+			user, err := userRepo.GetByID(r.Context(), userID)
+			if err != nil {
+				http.Error(w, "user_not_found", http.StatusNotFound)
+				return
+			}
+			if user.ShikimoriAccessToken == nil || user.ShikimoriUserID == nil {
+				http.Error(w, "no_shikimori_tokens", http.StatusNotFound)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"access_token":      *user.ShikimoriAccessToken,
+				"refresh_token":     user.ShikimoriRefreshToken,
+				"shikimori_user_id": *user.ShikimoriUserID,
+			})
+			return
+		}
 		http.NotFound(w, r)
 	})
 	
@@ -120,6 +147,21 @@ func Run() error {
 
 	// POST /api/v1/users/password — смена пароля
 	protectedMux.HandleFunc("/api/v1/users/password", authHandler.ChangePassword)
+
+	// Shikimori OAuth routes
+	protectedMux.HandleFunc("/api/v1/auth/shikimori/login", authHandler.ShikimoriLogin)
+	protectedMux.HandleFunc("/api/v1/auth/shikimori/callback", authHandler.ShikimoriCallback)
+
+	// Invites
+	protectedMux.HandleFunc("/api/v1/auth/invites", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			authHandler.GenerateInvite(w, r)
+		} else if r.Method == http.MethodGet {
+			authHandler.ListInvites(w, r)
+		} else {
+			http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		}
+	})
 
 	// Друзья и поиск
 	protectedMux.HandleFunc("/api/v1/users/friends", authHandler.HandleFriends)

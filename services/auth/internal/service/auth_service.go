@@ -31,6 +31,7 @@ type AuthService interface {
 	Login(ctx context.Context, req model.LoginRequest) (*model.User, string, string, error)
 	Refresh(ctx context.Context, refreshToken string) (string, string, error)
 	Logout(ctx context.Context, refreshToken string) error
+	GetConfig() *config.Config
 
 	// Профиль
 	UpdateProfile(ctx context.Context, userID int64, req model.UpdateProfileRequest) (*model.User, error)
@@ -49,6 +50,13 @@ type AuthService interface {
 	DeleteFriend(ctx context.Context, userID, targetID int64) error
 	SearchUsers(ctx context.Context, q string, excludeID int64) ([]*model.User, error)
 	
+	// Invite Codes
+	GenerateInvite(ctx context.Context, userID int64) (*model.InviteCode, error)
+	ListUserInvites(ctx context.Context, userID int64) ([]*model.InviteCode, error)
+
+	// Shikimori
+	ShikimoriCallback(ctx context.Context, userID int64, code string) error
+	
 	SetNotificationService(svc NotificationService)
 }
 
@@ -56,14 +64,20 @@ type authService struct {
 	cfg         *config.Config
 	userRepo    repository.UserRepository
 	sessionRepo repository.SessionRepository
+	inviteRepo  repository.InviteRepository
+	tokenRepo   repository.VerificationTokenRepository
+	mailerSvc   MailerService
 	notifSvc    NotificationService
 }
 
-func NewAuthService(cfg *config.Config, userRepo repository.UserRepository, sessionRepo repository.SessionRepository) AuthService {
+func NewAuthService(cfg *config.Config, userRepo repository.UserRepository, sessionRepo repository.SessionRepository, inviteRepo repository.InviteRepository, tokenRepo repository.VerificationTokenRepository, mailerSvc MailerService) AuthService {
 	return &authService{
 		cfg:         cfg,
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
+		inviteRepo:  inviteRepo,
+		tokenRepo:   tokenRepo,
+		mailerSvc:   mailerSvc,
 	}
 }
 
@@ -71,9 +85,34 @@ func (s *authService) SetNotificationService(svc NotificationService) {
 	s.notifSvc = svc
 }
 
+func (s *authService) GetConfig() *config.Config {
+	return s.cfg
+}
+
 // ── Auth ──
 
 func (s *authService) Register(ctx context.Context, req model.RegisterRequest) (*model.User, error) {
+	if req.InviteCode == "" {
+		return nil, errors.New("invite code is required")
+	}
+
+	// 1. Verify and reserve the invite code (checking if it exists and is unused)
+	var invite *model.InviteCode
+	var isMasterCode bool
+
+	if s.cfg.MasterInviteCode != "" && req.InviteCode == s.cfg.MasterInviteCode {
+		isMasterCode = true
+	} else {
+		var err error
+		invite, err = s.inviteRepo.GetByCode(ctx, req.InviteCode)
+		if err != nil {
+			return nil, errors.New("invalid or used invite code")
+		}
+		if invite.UsedBy != nil {
+			return nil, errors.New("invite code already used")
+		}
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -86,7 +125,38 @@ func (s *authService) Register(ctx context.Context, req model.RegisterRequest) (
 		}
 		return nil, err
 	}
+
+	// 2. Mark invite code as used
+	if !isMasterCode && invite != nil {
+		if err := s.inviteRepo.MarkAsUsed(ctx, invite.ID, user.ID); err != nil {
+			// Log error but don't fail registration
+			log.Printf("Failed to mark invite code %d as used by user %d: %v", invite.ID, user.ID, err)
+		}
+
+		// 3. Create bidirectional friendship
+		if err := s.userRepo.CreateFriendship(ctx, invite.CreatedBy, user.ID, "accepted"); err != nil {
+			log.Printf("Failed to create friendship between %d and %d: %v", invite.CreatedBy, user.ID, err)
+		}
+	}
+
 	return user, nil
+}
+
+// ── Invite Codes ──
+
+func (s *authService) GenerateInvite(ctx context.Context, userID int64) (*model.InviteCode, error) {
+	// Generate random 8-character code
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+	code := hex.EncodeToString(b)
+	
+	return s.inviteRepo.Create(ctx, code, userID)
+}
+
+func (s *authService) ListUserInvites(ctx context.Context, userID int64) ([]*model.InviteCode, error) {
+	return s.inviteRepo.GetByCreatedBy(ctx, userID)
 }
 
 func (s *authService) Login(ctx context.Context, req model.LoginRequest) (*model.User, string, string, error) {
@@ -190,24 +260,65 @@ func (s *authService) ChangePassword(ctx context.Context, userID int64, req mode
 
 // ── Сброс пароля (заглушки) ──
 
-// ForgotPassword — заглушка. В продакшне здесь будет отправка письма.
-// Намеренно не говорим клиенту, существует ли email — защита от перебора.
-func (s *authService) ForgotPassword(ctx context.Context, email string) error {
-	// TODO: интеграция с SMTP / SendGrid / Resend
-	// 1. Сгенерировать токен: token := generateSecureToken()
-	// 2. Сохранить в Redis с TTL 1 час: redis.Set("reset:"+token, userID, 1h)
-	// 3. Отправить письмо с ссылкой: /reset-password?token=<token>
-	log.Printf("[ForgotPassword STUB] Запрос сброса пароля для: %s", email)
+func (s *authService) generateVerificationToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func (s *authService) ForgotPassword(ctx context.Context, identifier string) error {
+	user, err := s.userRepo.GetByIdentifier(ctx, identifier)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			// Намеренно не возвращаем ошибку, чтобы не сливать email
+			return nil
+		}
+		return err
+	}
+
+	// Удаляем старые токены
+	_ = s.tokenRepo.DeleteByUserIDAndPurpose(ctx, user.ID, model.PurposePasswordReset)
+
+	tokenStr, err := s.generateVerificationToken()
+	if err != nil {
+		return err
+	}
+
+	expiresAt := time.Now().Add(1 * time.Hour).Unix()
+	_, err = s.tokenRepo.Create(ctx, user.ID, tokenStr, model.PurposePasswordReset, expiresAt)
+	if err != nil {
+		return err
+	}
+
+	// Отправляем email асинхронно
+	go func() {
+		if err := s.mailerSvc.SendPasswordResetEmail(user.Email, tokenStr); err != nil {
+			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
+		}
+	}()
+
 	return nil
 }
 
-// ResetPassword — заглушка. В продакшне проверяет токен из Redis.
-func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
-	// TODO:
-	// 1. Получить userID из Redis: userID, err := redis.Get("reset:"+token)
-	// 2. Удалить токен: redis.Del("reset:"+token)
-	// 3. Захэшировать и сохранить новый пароль
-	log.Printf("[ResetPassword STUB] Попытка сброса пароля с токеном: %s", token)
+func (s *authService) ResetPassword(ctx context.Context, tokenStr, newPassword string) error {
+	token, err := s.tokenRepo.GetByToken(ctx, tokenStr, model.PurposePasswordReset)
+	if err != nil {
+		return err // ErrTokenNotFound
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash new password: %w", err)
+	}
+
+	if err := s.userRepo.UpdatePassword(ctx, token.UserID, string(newHash)); err != nil {
+		return err
+	}
+
+	_ = s.tokenRepo.DeleteByToken(ctx, tokenStr)
+
 	return nil
 }
 

@@ -342,9 +342,10 @@ func (h *Handler) notifyFriendsRoomCreated(ownerID int64, ownerName string, room
 	// Send notification for each friend via auth-service internal endpoint
 	for _, friendID := range friends {
 		payload := map[string]interface{}{
-			"user_id": friendID,
-			"type":    "watchparty_room_created",
-			"message": fmt.Sprintf("Ваш друг %s только что создал комнату!", ownerName),
+			"user_id":   friendID,
+			"type":      "watchparty_room_created",
+			"message":   fmt.Sprintf("Ваш друг %s только что создал комнату!", ownerName),
+			"transient": true,
 			"metadata": map[string]interface{}{
 				"room_id":    roomID,
 				"owner_name": ownerName,

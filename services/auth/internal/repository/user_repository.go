@@ -23,6 +23,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id int64) (*model.User, error)
 	UpdateProfile(ctx context.Context, id int64, username, email string) (*model.User, error)
 	UpdatePassword(ctx context.Context, id int64, newPasswordHash string) error
+	UpdateShikimoriTokens(ctx context.Context, id int64, accessToken, refreshToken string, shikimoriUserID int64) error
 
 	// Дружба
 	GetFriendship(ctx context.Context, userID, targetID int64) (*model.Friendship, error)
@@ -55,7 +56,11 @@ func scanUser(row pgx.Row, user *model.User) error {
 		&user.ID,
 		&user.Username,
 		&emailPtr,
+		&user.EmailVerified,
 		&user.PasswordHash,
+		&user.ShikimoriAccessToken,
+		&user.ShikimoriRefreshToken,
+		&user.ShikimoriUserID,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -75,6 +80,10 @@ func scanUserNoHash(row pgx.Row, user *model.User) error {
 		&user.ID,
 		&user.Username,
 		&emailPtr,
+		&user.EmailVerified,
+		&user.ShikimoriAccessToken,
+		&user.ShikimoriRefreshToken,
+		&user.ShikimoriUserID,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -95,9 +104,9 @@ func (r *postgresUserRepository) Create(ctx context.Context, username, email, pa
 	}
 
 	query := `
-		INSERT INTO users (username, email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, username, email, created_at, updated_at
+		INSERT INTO users (username, email, password_hash, email_verified, created_at, updated_at)
+		VALUES ($1, $2, $3, false, $4, $5)
+		RETURNING id, username, email, email_verified, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 	`
 	now := time.Now()
 	user := &model.User{}
@@ -113,7 +122,7 @@ func (r *postgresUserRepository) Create(ctx context.Context, username, email, pa
 
 func (r *postgresUserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, email, email_verified, password_hash, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 		FROM users WHERE email = $1
 	`
 	user := &model.User{}
@@ -130,7 +139,7 @@ func (r *postgresUserRepository) GetByEmail(ctx context.Context, email string) (
 // Сервер сам определяет что имел ввиду пользователь — клиент шлёт одно поле.
 func (r *postgresUserRepository) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, email, email_verified, password_hash, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 		FROM users
 		WHERE email = $1 OR username = $1
 		LIMIT 1
@@ -147,7 +156,7 @@ func (r *postgresUserRepository) GetByIdentifier(ctx context.Context, identifier
 
 func (r *postgresUserRepository) GetByID(ctx context.Context, id int64) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, email, email_verified, password_hash, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 		FROM users WHERE id = $1
 	`
 	user := &model.User{}
@@ -169,7 +178,7 @@ func (r *postgresUserRepository) UpdateProfile(ctx context.Context, id int64, us
 	query := `
 		UPDATE users SET username = $1, email = $2, updated_at = $3
 		WHERE id = $4
-		RETURNING id, username, email, created_at, updated_at
+		RETURNING id, username, email, email_verified, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 	`
 	user := &model.User{}
 	row := r.db.QueryRow(ctx, query, username, emailArg, time.Now(), id)
@@ -193,6 +202,14 @@ func (r *postgresUserRepository) UpdatePassword(ctx context.Context, id int64, n
 	return err
 }
 
+func (r *postgresUserRepository) UpdateShikimoriTokens(ctx context.Context, id int64, accessToken, refreshToken string, shikimoriUserID int64) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE users SET shikimori_access_token = $1, shikimori_refresh_token = $2, shikimori_user_id = $3, updated_at = $4 WHERE id = $5`,
+		accessToken, refreshToken, shikimoriUserID, time.Now(), id,
+	)
+	return err
+}
+
 func (r *postgresUserRepository) GetFriendship(ctx context.Context, userID, targetID int64) (*model.Friendship, error) {
 	query := `
 		SELECT id, user_id, friend_id, status, created_at
@@ -212,7 +229,7 @@ func (r *postgresUserRepository) GetFriendship(ctx context.Context, userID, targ
 
 func (r *postgresUserRepository) GetFriends(ctx context.Context, userID int64) ([]*model.User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.created_at, u.updated_at
+		SELECT u.id, u.username, u.email, u.email_verified, u.shikimori_access_token, u.shikimori_refresh_token, u.shikimori_user_id, u.created_at, u.updated_at
 		FROM users u
 		JOIN friendships f ON (f.user_id = $1 AND f.friend_id = u.id) OR (f.friend_id = $1 AND f.user_id = u.id)
 		WHERE f.status = 'accepted'
@@ -228,7 +245,7 @@ func (r *postgresUserRepository) GetFriends(ctx context.Context, userID int64) (
 	for rows.Next() {
 		u := &model.User{}
 		var emailPtr *string
-		if err := rows.Scan(&u.ID, &u.Username, &emailPtr, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &emailPtr, &u.EmailVerified, &u.ShikimoriAccessToken, &u.ShikimoriRefreshToken, &u.ShikimoriUserID, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if emailPtr != nil {
@@ -309,9 +326,9 @@ func (r *postgresUserRepository) DeleteFriendship(ctx context.Context, userID, t
 
 func (r *postgresUserRepository) SearchUsers(ctx context.Context, q string, excludeID int64) ([]*model.User, error) {
 	query := `
-		SELECT id, username, email, created_at, updated_at
+		SELECT id, username, email, email_verified, shikimori_access_token, shikimori_refresh_token, shikimori_user_id, created_at, updated_at
 		FROM users
-		WHERE username ILIKE $1 AND id <> $2
+		WHERE username ILIKE $1 OR email ILIKE $1 AND id != $2
 		ORDER BY username ASC
 		LIMIT 20
 	`

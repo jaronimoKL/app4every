@@ -19,8 +19,8 @@
             <div class="success-icon">📬</div>
             <h1 class="auth-title">Письмо отправлено</h1>
             <p class="auth-subtitle" style="margin-top:8px;line-height:1.6;">
-              Если аккаунт с адресом<br>
-              <strong style="color:var(--text-primary);">{{ sentEmail }}</strong><br>
+              Если аккаунт с логином или email<br>
+              <strong style="color:var(--text-primary);">{{ sentIdentifier }}</strong><br>
               существует — мы отправили инструкции по сбросу пароля.
             </p>
             <div class="alert-stub glass" style="margin-top:16px;">
@@ -38,19 +38,19 @@
           <div class="auth-card-header">
             <div style="font-size:36px;margin-bottom:12px;">🔐</div>
             <h1 class="auth-title">Забыли пароль?</h1>
-            <p class="auth-subtitle">Введите email — пришлём ссылку для сброса</p>
+            <p class="auth-subtitle">Введите логин или email — пришлём ссылку для сброса на связанную почту</p>
           </div>
 
           <form @submit.prevent="handleSubmit" class="auth-form">
             <div class="form-group">
-              <label class="form-label" for="fp-email">Email</label>
+              <label class="form-label" for="fp-identifier">Email или Логин</label>
               <input
-                id="fp-email"
-                v-model="email"
-                type="email"
+                id="fp-identifier"
+                v-model="identifier"
+                type="text"
                 class="form-input"
-                placeholder="you@example.com"
-                autocomplete="email"
+                placeholder="you@example.com или логин"
+                autocomplete="username"
                 required
               />
             </div>
@@ -75,18 +75,18 @@
 import { ref } from 'vue'
 import { authApi } from '@/services/api'
 
-const email     = ref('')
-const sentEmail = ref('')
+const identifier     = ref('')
+const sentIdentifier = ref('')
 const loading   = ref(false)
 const sent      = ref(false)
 
 async function handleSubmit() {
   loading.value = true
   try {
-    await authApi.forgotPassword(email.value)
+    await authApi.forgotPassword(identifier.value)
   } catch { /* намеренно игнорируем — не раскрываем существование email */ }
   finally {
-    sentEmail.value = email.value
+    sentIdentifier.value = identifier.value
     loading.value = false
     sent.value = true
   }

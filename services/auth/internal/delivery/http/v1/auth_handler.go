@@ -245,10 +245,10 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Вызываем сервис (он логирует запрос), но клиенту всегда говорим "ок".
 	// Это защита от перебора: злоумышленник не узнает, существует ли email.
-	_ = h.authService.ForgotPassword(r.Context(), req.Email)
+	_ = h.authService.ForgotPassword(r.Context(), req.Identifier)
 
 	writeJSON(w, http.StatusOK, map[string]string{
-		"message": "If an account with that email exists, we sent a reset link.",
+		"message": "If an account with that email/username exists, we sent a reset link to the linked email.",
 	})
 }
 
@@ -419,4 +419,83 @@ func (h *AuthHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, users)
+}
+
+// ── Shikimori OAuth ──
+
+// GET /api/v1/auth/shikimori/login
+func (h *AuthHandler) ShikimoriLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	cfg := h.authService.GetConfig()
+	
+	url := fmt.Sprintf("https://shikimori.one/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
+		cfg.ShikimoriClientID, cfg.ShikimoriRedirectURI)
+	
+	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+}
+
+// GET /api/v1/auth/shikimori/callback
+func (h *AuthHandler) ShikimoriCallback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "missing code")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	if err := h.authService.ShikimoriCallback(r.Context(), userID, code); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	// Редирект обратно на клиент в профиль
+	http.Redirect(w, r, "/profile?shikimori_linked=true", http.StatusFound)
+}
+
+// ── Invite Codes ──
+
+// POST /api/v1/auth/invites
+func (h *AuthHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	invite, err := h.authService.GenerateInvite(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, invite)
+}
+
+// GET /api/v1/auth/invites
+func (h *AuthHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+
+	invites, err := h.authService.ListUserInvites(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, invites)
 }

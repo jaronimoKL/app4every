@@ -24,8 +24,8 @@ async function request(method, path, body = null, token = null) {
 
 // ── Auth ──
 export const authApi = {
-  register: (username, email, password) =>
-    request('POST', '/auth/register', { username, email, password }),
+  register: (username, email, password, invite_code) =>
+    request('POST', '/auth/register', { username, email, password, invite_code }),
 
   login: (identifier, password) =>
     request('POST', '/auth/login', { identifier, password }),
@@ -39,11 +39,11 @@ export const authApi = {
   me: (token) =>
     request('GET', '/auth/me', null, token),
 
-  forgotPassword: (email) =>
-    request('POST', '/auth/forgot-password', { email }),
+  forgotPassword: (identifier) =>
+    request('POST', '/auth/password/forgot', { identifier }),
 
   resetPassword: (token, newPassword) =>
-    request('POST', '/auth/reset-password', { token, new_password: newPassword }),
+    request('POST', '/auth/password/reset', { token, new_password: newPassword }),
 }
 
 // ── User / Profile ──
