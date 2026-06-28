@@ -21,12 +21,8 @@
             <p class="auth-subtitle" style="margin-top:8px;">
               Аккаунт создан! Мы отправили письмо на<br>
               <strong style="color:var(--text-primary);">{{ email }}</strong><br>
-              для подтверждения адреса.
+              Пожалуйста, подтвердите вашу почту, перейдя по ссылке в письме.
             </p>
-            <div class="alert-stub glass" style="margin-top:16px;">
-              <span>🔧</span>
-              <span>Заглушка: отправка email будет подключена позже. Вы уже можете войти.</span>
-            </div>
             <RouterLink to="/login" class="btn btn-primary" style="width:100%;padding:13px;margin-top:20px;text-align:center;">
               Войти в аккаунт →
             </RouterLink>
@@ -276,17 +272,4 @@ async function handleRegister() {
   gap: 8px;
 }
 .success-icon { font-size: 48px; line-height: 1; margin-bottom: 8px; }
-
-/* Заглушка */
-.alert-stub {
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  text-align: left;
-  border: 1px solid rgba(255,255,255,0.06);
-}
 </style>

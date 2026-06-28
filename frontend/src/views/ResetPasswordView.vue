@@ -35,14 +35,7 @@
             <p class="auth-subtitle">Придумайте новый пароль для аккаунта</p>
           </div>
 
-          <!-- Заглушка (показываем только если нет токена) -->
-          <div v-if="!token" class="alert-stub glass">
-            <span>🔧</span>
-            <span>
-              Заглушка: для полноценной работы нужна ссылка из письма (?token=...).
-              SMTP-интеграция будет добавлена позже.
-            </span>
-          </div>
+
 
           <div v-if="errorMsg" class="alert-error">
             <span>⚠</span> {{ errorMsg }}
@@ -128,8 +121,11 @@ async function handleSubmit() {
 
   loading.value = true
   try {
-    // Если токена нет (заглушка без письма) — всё равно вызываем API для демонстрации
-    await authApi.resetPassword(token.value || 'stub-token', newPassword.value)
+    if (!token.value) {
+      errorMsg.value = 'Отсутствует токен сброса. Перейдите по ссылке из письма.'
+      return
+    }
+    await authApi.resetPassword(token.value, newPassword.value)
     done.value = true
   } catch {
     errorMsg.value = 'Ссылка недействительна или устарела. Запросите новую.'

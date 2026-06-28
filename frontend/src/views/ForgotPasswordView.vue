@@ -23,10 +23,6 @@
               <strong style="color:var(--text-primary);">{{ sentIdentifier }}</strong><br>
               существует — мы отправили инструкции по сбросу пароля.
             </p>
-            <div class="alert-stub glass" style="margin-top:16px;">
-              <span>🔧</span>
-              <span>Заглушка: SMTP не подключён. Сброс пароля будет доступен после интеграции с почтовым сервисом.</span>
-            </div>
             <RouterLink to="/login" class="btn btn-ghost" style="width:100%;padding:12px;margin-top:20px;text-align:center;">
               ← Вернуться к входу
             </RouterLink>
