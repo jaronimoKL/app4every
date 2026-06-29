@@ -16,7 +16,7 @@ onMounted(async () => {
 async function fetchCalendar() {
   loading.value = true
   try {
-    const res = await fetch('https://shikimori.one/api/calendar')
+    const res = await fetch('https://shikimori.io/api/calendar')
     if (!res.ok) throw new Error('Failed to fetch calendar')
     const data = await res.json()
     calendarItems.value = data
@@ -58,7 +58,7 @@ async function addToPlanned(item) {
     title: item.anime.russian || item.anime.name,
     content_type: 'anime',
     status: 'planned',
-    poster_url: 'https://shikimori.one' + item.anime.image.original,
+    poster_url: 'https://shikimori.io' + item.anime.image.original,
     shikimori_id: id,
     description: item.anime.description || '',
     episodes_total: item.anime.episodes || 0,
@@ -134,7 +134,7 @@ async function addToShikimori(animeId) {
           <div class="anime-grid">
             <div v-for="item in items" :key="item.anime.id" class="anime-card glass">
               <div class="poster-wrapper">
-                <img :src="'https://shikimori.one' + item.anime.image.original" alt="Poster" class="anime-poster" />
+                <img :src="'https://shikimori.io' + item.anime.image.original" alt="Poster" class="anime-poster" />
                 <div class="episode-badge">
                   Эп. {{ item.next_episode }} • {{ formatTime(item.next_episode_at) }}
                 </div>

@@ -41,7 +41,7 @@ func (h *IntegrationHandler) ShikimoriSearch(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	searchURL := fmt.Sprintf("https://shikimori.one/api/animes?search=%s&limit=%s&censored=false", url.QueryEscape(query), url.QueryEscape(limit))
+	searchURL := fmt.Sprintf("https://shikimori.io/api/animes?search=%s&limit=%s&censored=false", url.QueryEscape(query), url.QueryEscape(limit))
 	req, err := http.NewRequestWithContext(ctx, "GET", searchURL, nil)
 	if err != nil {
 		http.Error(w, `{"error":"request creation failed"}`, http.StatusInternalServerError)

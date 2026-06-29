@@ -11,7 +11,7 @@ import (
 
 func (s *authService) ShikimoriCallback(ctx context.Context, userID int64, code string) error {
 	// 1. Обменять code на access_token и refresh_token
-	tokenURL := "https://shikimori.one/oauth/token"
+	tokenURL := "https://shikimori.io/oauth/token"
 	payload := map[string]string{
 		"grant_type":    "authorization_code",
 		"client_id":     s.cfg.ShikimoriClientID,
@@ -46,7 +46,7 @@ func (s *authService) ShikimoriCallback(ctx context.Context, userID int64, code 
 	}
 
 	// 2. Получить ID пользователя в Shikimori (/api/users/whoami)
-	whoamiURL := "https://shikimori.one/api/users/whoami"
+	whoamiURL := "https://shikimori.io/api/users/whoami"
 	wReq, _ := http.NewRequest("GET", whoamiURL, nil)
 	wReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
 	wReq.Header.Set("User-Agent", "App4Every")
@@ -85,7 +85,7 @@ func (s *authService) GetShikimoriRates(ctx context.Context, userID int64) ([]by
 		return nil, fmt.Errorf("shikimori account not linked")
 	}
 
-	url := fmt.Sprintf("https://shikimori.one/api/users/%d/anime_rates", *user.ShikimoriUserID)
+	url := fmt.Sprintf("https://shikimori.io/api/users/%d/anime_rates", *user.ShikimoriUserID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
 	req.Header.Set("User-Agent", "App4Every")
@@ -114,7 +114,7 @@ func (s *authService) SyncShikimoriRate(ctx context.Context, userID int64, paylo
 		return nil, fmt.Errorf("shikimori account not linked")
 	}
 
-	url := "https://shikimori.one/api/v2/user_rates"
+	url := "https://shikimori.io/api/v2/user_rates"
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
 	req.Header.Set("Content-Type", "application/json")

@@ -50,7 +50,7 @@ export const useReviewsStore = defineStore('reviews', () => {
               status: rate.status === 'on_hold' ? 'planned' : rate.status, // Shikimori 'on_hold' -> planned (или можно оставить)
               rating: rate.score || null,
               notes: rate.text || '',
-              poster_url: rate.anime?.image?.original ? 'https://shikimori.one' + rate.anime.image.original : '',
+              poster_url: rate.anime?.image?.original ? 'https://shikimori.io' + rate.anime.image.original : '',
               shikimori_id: rate.anime?.id,
               episodes_total: rate.anime?.episodes || null,
               shikimori_score: parseFloat(rate.anime?.score) || null,

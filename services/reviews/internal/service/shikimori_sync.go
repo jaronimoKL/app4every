@@ -81,7 +81,7 @@ func (s *groupService) syncShikimori(ctx context.Context, userID int64, item *mo
 
 	bodyBytes, _ := json.Marshal(payload)
 	
-	sReq, _ := http.NewRequestWithContext(ctx, "POST", "https://shikimori.one/api/v2/user_rates", bytes.NewBuffer(bodyBytes))
+	sReq, _ := http.NewRequestWithContext(ctx, "POST", "https://shikimori.io/api/v2/user_rates", bytes.NewBuffer(bodyBytes))
 	sReq.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	sReq.Header.Set("Content-Type", "application/json")
 	sReq.Header.Set("User-Agent", "App4Every")

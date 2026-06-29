@@ -436,7 +436,7 @@ func (h *AuthHandler) ShikimoriLogin(w http.ResponseWriter, r *http.Request) {
 	cfg := h.authService.GetConfig()
 	
 	encodedRedirectURI := url.QueryEscape(cfg.ShikimoriRedirectURI)
-	authUrl := fmt.Sprintf("https://shikimori.one/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
+	authUrl := fmt.Sprintf("https://shikimori.io/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=user_rates",
 		cfg.ShikimoriClientID, encodedRedirectURI)
 	
 	// Передаем токен через параметр state, чтобы Shikimori вернул его нам в callback

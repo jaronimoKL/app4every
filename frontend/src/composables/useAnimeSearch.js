@@ -22,8 +22,8 @@ export function useAnimeSearch() {
         id: item.id,
         title: item.russian || item.name,
         titleEn: item.name,
-        poster: `https://shikimori.one${item.image.preview}`,
-        posterFull: `https://shikimori.one${item.image.original}`,
+        poster: `https://shikimori.io${item.image.preview}`,
+        posterFull: `https://shikimori.io${item.image.original}`,
         score: parseFloat(item.score),
         kind: item.kind,        // tv | movie | ova | ona
         episodes: item.episodes,
@@ -84,7 +84,7 @@ export function useAnimeSearch() {
       // В задании не просили делать прокси для деталей, но CORS может мешать? 
       // Shikimori API без авторизации обычно открыт для CORS, но лучше проверить.
       // Попробуем напрямую с fetch, так как в задании прокси только для /search
-      const res = await fetch(`https://shikimori.one/api/animes/${id}`)
+      const res = await fetch(`https://shikimori.io/api/animes/${id}`)
       if (!res.ok) throw new Error("Failed")
       return await res.json()
     } catch (e) {
