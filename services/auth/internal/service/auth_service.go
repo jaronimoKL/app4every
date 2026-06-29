@@ -56,6 +56,8 @@ type AuthService interface {
 
 	// Shikimori
 	ShikimoriCallback(ctx context.Context, userID int64, code string) error
+	GetShikimoriRates(ctx context.Context, userID int64) ([]byte, error)
+	SyncShikimoriRate(ctx context.Context, userID int64, payload []byte) ([]byte, error)
 	
 	SetNotificationService(svc NotificationService)
 }

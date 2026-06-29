@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -469,6 +470,52 @@ func (h *AuthHandler) ShikimoriCallback(w http.ResponseWriter, r *http.Request) 
 
 	// Редирект обратно на клиент в профиль
 	http.Redirect(w, r, "/profile?shikimori_linked=true", http.StatusFound)
+}
+
+// GET /api/v1/auth/shikimori/rates
+func (h *AuthHandler) GetShikimoriRates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+	data, err := h.authService.GetShikimoriRates(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
+// POST /api/v1/auth/shikimori/rates
+func (h *AuthHandler) SyncShikimoriRate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+	
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "failed to read body")
+		return
+	}
+	defer r.Body.Close()
+
+	data, err := h.authService.SyncShikimoriRate(r.Context(), userID, bodyBytes)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
 
 // ── Invite Codes ──

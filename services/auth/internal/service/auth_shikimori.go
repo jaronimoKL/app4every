@@ -75,3 +75,57 @@ func (s *authService) ShikimoriCallback(ctx context.Context, userID int64, code 
 
 	return nil
 }
+
+func (s *authService) GetShikimoriRates(ctx context.Context, userID int64) ([]byte, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user.ShikimoriAccessToken == nil || user.ShikimoriUserID == nil {
+		return nil, fmt.Errorf("shikimori account not linked")
+	}
+
+	url := fmt.Sprintf("https://shikimori.one/api/users/%d/anime_rates", *user.ShikimoriUserID)
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
+	req.Header.Set("User-Agent", "App4Every")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		// Token expired, need to refresh (simplified for now, ideally we should call a refresh logic)
+		return nil, fmt.Errorf("shikimori token expired")
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (s *authService) SyncShikimoriRate(ctx context.Context, userID int64, payload []byte) ([]byte, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user.ShikimoriAccessToken == nil {
+		return nil, fmt.Errorf("shikimori account not linked")
+	}
+
+	url := "https://shikimori.one/api/v2/user_rates"
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "App4Every")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
+}

@@ -151,6 +151,15 @@ func Run() error {
 	// Shikimori OAuth routes
 	protectedMux.HandleFunc("/api/v1/auth/shikimori/login", authHandler.ShikimoriLogin)
 	protectedMux.HandleFunc("/api/v1/auth/shikimori/callback", authHandler.ShikimoriCallback)
+	protectedMux.HandleFunc("/api/v1/auth/shikimori/rates", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			authHandler.GetShikimoriRates(w, r)
+		} else if r.Method == http.MethodPost {
+			authHandler.SyncShikimoriRate(w, r)
+		} else {
+			http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
+		}
+	})
 
 	// Invites
 	protectedMux.HandleFunc("/api/v1/auth/invites", func(w http.ResponseWriter, r *http.Request) {
