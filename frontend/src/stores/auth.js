@@ -115,6 +115,34 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Интеграция Shikimori
+  async function fetchShikimoriWhoami() {
+    try {
+      const res = await fetch('/api/v1/auth/shikimori/whoami', {
+        headers: { 'Authorization': `Bearer ${accessToken.value}` }
+      })
+      if (!res.ok) throw new Error('Failed to fetch whoami')
+      return await res.json()
+    } catch {
+      return null
+    }
+  }
+
+  async function unlinkShikimori() {
+    try {
+      const res = await fetch('/api/v1/auth/shikimori/unlink', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken.value}` }
+      })
+      if (!res.ok) throw new Error('Failed to unlink')
+      // Обновляем локального пользователя чтобы убрать ID
+      if (user.value) user.value.shikimori_user_id = null
+      return true
+    } catch {
+      return false
+    }
+  }
+
   function clearAuth() {
     accessToken.value = null
     user.value = null
@@ -125,6 +153,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated, initialized,
     register, login, logout, refresh, tryRestoreSession, ensureInitialized,
     updateProfile, changePassword,
+    fetchShikimoriWhoami, unlinkShikimori,
     clearAuth,
   }
 })

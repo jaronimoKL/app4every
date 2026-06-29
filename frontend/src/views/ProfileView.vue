@@ -273,10 +273,20 @@
               <span class="security-icon" style="background:#2563eb; color:white;">S</span>
               <div>
                 <div style="font-size:14px;font-weight:500;">Shikimori</div>
-                <div style="font-size:12px;color:var(--text-muted);">Синхронизация списков аниме</div>
+                <div style="font-size:12px;color:var(--text-muted);">
+                  <template v-if="auth.user?.shikimori_user_id">
+                    Привязан: {{ shikimoriNickname || 'Загрузка...' }}
+                  </template>
+                  <template v-else>
+                    Синхронизация списков аниме
+                  </template>
+                </div>
               </div>
             </div>
-            <button class="btn btn-outline" @click="linkShikimori">
+            <button v-if="auth.user?.shikimori_user_id" class="btn btn-ghost" style="color:#f87171; border-color:rgba(248,113,113,0.15)" @click="handleUnlinkShikimori">
+              Отвязать
+            </button>
+            <button v-else class="btn btn-outline" @click="linkShikimori">
               Подключить
             </button>
           </div>
@@ -354,13 +364,38 @@ const copied = ref(false)
 const invites = ref([])
 const inviteLoading = ref(false)
 
+// ── Shikimori ──
+const shikimoriNickname = ref('')
+
 onMounted(async () => {
-  // Заполняем форму текущими данными пользователя
-  profileForm.username = auth.user?.username || ''
-  profileForm.email = auth.user?.email || ''
+  if (auth.user) {
+    profileForm.username = auth.user.username || ''
+    profileForm.email = auth.user.email || ''
+    
+    if (auth.user.shikimori_user_id) {
+      loadShikimoriProfile()
+    }
+  }
+
   await loadFriendsData()
   await loadInvites()
 })
+
+async function loadShikimoriProfile() {
+  const data = await auth.fetchShikimoriWhoami()
+  if (data && data.nickname) {
+    shikimoriNickname.value = data.nickname
+  }
+}
+
+async function handleUnlinkShikimori() {
+  if (confirm('Вы уверены, что хотите отвязать аккаунт Shikimori?')) {
+    const success = await auth.unlinkShikimori()
+    if (success) {
+      shikimoriNickname.value = ''
+    }
+  }
+}
 
 async function loadInvites() {
   try {

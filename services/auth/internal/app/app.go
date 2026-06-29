@@ -160,6 +160,8 @@ func Run() error {
 			http.Error(w, `{"error":"method_not_allowed"}`, http.StatusMethodNotAllowed)
 		}
 	})
+	protectedMux.HandleFunc("/api/v1/auth/shikimori/whoami", authHandler.GetShikimoriWhoami)
+	protectedMux.HandleFunc("/api/v1/auth/shikimori/unlink", authHandler.UnlinkShikimori)
 
 	// Invites
 	protectedMux.HandleFunc("/api/v1/auth/invites", func(w http.ResponseWriter, r *http.Request) {

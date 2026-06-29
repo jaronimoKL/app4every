@@ -472,6 +472,39 @@ func (h *AuthHandler) ShikimoriCallback(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/profile?shikimori_linked=true", http.StatusFound)
 }
 
+// GET /api/v1/auth/shikimori/whoami
+func (h *AuthHandler) GetShikimoriWhoami(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+	whoami, err := h.authService.GetShikimoriWhoami(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, whoami)
+}
+
+// POST /api/v1/auth/shikimori/unlink
+func (h *AuthHandler) UnlinkShikimori(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	userID := r.Context().Value(delivery.UserIDKey).(int64)
+	if err := h.authService.UnlinkShikimori(r.Context(), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "unlinked successfully"})
+}
+
 // GET /api/v1/auth/shikimori/rates
 func (h *AuthHandler) GetShikimoriRates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

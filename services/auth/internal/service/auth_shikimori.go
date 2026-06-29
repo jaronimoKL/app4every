@@ -85,7 +85,7 @@ func (s *authService) GetShikimoriRates(ctx context.Context, userID int64) ([]by
 		return nil, fmt.Errorf("shikimori account not linked")
 	}
 
-	url := fmt.Sprintf("https://shikimori.io/api/users/%d/anime_rates", *user.ShikimoriUserID)
+	url := fmt.Sprintf("https://shikimori.io/api/users/%d/anime_rates?limit=5000&status=watching,completed,dropped", *user.ShikimoriUserID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
 	req.Header.Set("User-Agent", "App4Every")
@@ -128,4 +128,37 @@ func (s *authService) SyncShikimoriRate(ctx context.Context, userID int64, paylo
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
+}
+
+func (s *authService) GetShikimoriWhoami(ctx context.Context, userID int64) ([]byte, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user.ShikimoriAccessToken == nil {
+		return nil, fmt.Errorf("shikimori account not linked")
+	}
+
+	url := "https://shikimori.io/api/users/whoami"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
+	req.Header.Set("User-Agent", "App4Every")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get whoami: %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (s *authService) UnlinkShikimori(ctx context.Context, userID int64) error {
+	// Очищаем токены и ID в БД
+	return s.userRepo.UpdateShikimoriTokens(ctx, userID, "", "", 0)
 }
