@@ -932,9 +932,11 @@ function handleAnimeSelect(anime) {
   
   if (anime.details) {
     itemForm.description = anime.details.description || ''
-    if (anime.details.episodes) {
-      itemForm.max_episodes = anime.details.episodes
-      itemForm.episodes_total = anime.details.episodes
+    // Если сериал онгоинг, то episodes может быть 0
+    const totalEps = anime.details.episodes || anime.details.episodes_total || anime.details.episodes_aired || 1
+    if (totalEps) {
+      itemForm.max_episodes = totalEps
+      itemForm.episodes_total = totalEps
     }
     if (anime.details.genres) {
       itemForm.genresString = anime.details.genres.map(g => g.russian).join(', ')

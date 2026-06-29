@@ -134,6 +134,10 @@
             <div class="card-type-badge" :style="{ background: typeColor(rev.content_type) }">
               {{ typeIcon(rev.content_type) }} {{ typeLabel(rev.content_type) }}
             </div>
+            <!-- Бейдж Shikimori -->
+            <div v-if="rev.isShikimoriOnly" class="shikimori-badge">
+              <span title="Синхронизировано с Shikimori">⛩️ Shikimori</span>
+            </div>
             <!-- Оценка -->
             <div class="card-rating" v-if="rev.rating">
               <span class="rating-star">★</span>
@@ -714,10 +718,20 @@ async function handleSave() {
 
   let savedReview
   try {
-    if (isEditing.value) {
+    if (isEditing.value && !editingReview.value.isShikimoriOnly) {
       savedReview = await store.updateReview(editingReview.value.id, payload)
     } else {
+      // Если это только с Shikimori, мы сохраняем его локально впервые
       savedReview = await store.createReview(payload)
+      if (isEditing.value && editingReview.value.isShikimoriOnly) {
+         // Удаляем виртуальную запись из массива
+         store.reviews = store.reviews.filter(r => r.id !== editingReview.value.id)
+      }
+    }
+
+    // Синхронизация с Shikimori (если привязан и это аниме)
+    if (auth.user?.shikimori_user_id && payload.shikimori_id) {
+       await syncToShikimori(payload.shikimori_id, payload.status, payload.rating)
     }
 
     // Добавляем новые ссылки если есть
@@ -749,9 +763,45 @@ function handleDelete() {
 }
 
 async function confirmDelete() {
-  showDeleteConfirm.value = false
-  await store.deleteReview(editingReview.value.id)
-  closeModal()
+  if (!editingReview.value) return
+  isDeleting.value = true
+  try {
+    if (editingReview.value.isShikimoriOnly) {
+      // Удаляем виртуальную запись
+      store.reviews = store.reviews.filter(r => r.id !== editingReview.value.id)
+    } else {
+      await store.deleteReview(editingReview.value.id)
+    }
+    showDeleteConfirm.value = false
+    closeModal()
+  } catch (err) {
+    console.error('Failed to delete review', err)
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+async function syncToShikimori(animeId, status, score) {
+  try {
+    const payload = {
+      user_rate: {
+        target_id: animeId,
+        target_type: 'Anime',
+        status: status,
+        score: score || 0
+      }
+    }
+    await fetch('/api/v1/auth/shikimori/rates', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.accessToken}`
+      },
+      body: JSON.stringify(payload)
+    })
+  } catch (err) {
+    console.warn('Failed to sync to Shikimori', err)
+  }
 }
 
 async function handleDeleteLink(linkId) {
@@ -944,15 +994,36 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   align-self: flex-start;
 }
 .card-rating {
-  position: relative; z-index: 1;
-  align-self: flex-end;
-  display: flex; align-items: baseline; gap: 2px;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-  padding: 4px 8px; border-radius: 8px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.rating-star { font-size: 13px; color: #fbbf24; }
-.rating-num  { font-size: 16px; font-weight: 700; color: white; }
-.rating-max  { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+.shikimori-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(33, 33, 33, 0.85);
+  backdrop-filter: blur(4px);
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
 /* Информация */
 .card-info { padding: 10px 12px 12px; }

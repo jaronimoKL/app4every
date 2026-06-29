@@ -9,7 +9,8 @@
 
       <!-- Навигация (центр) - если нужно, можно добавить ссылки -->
       <div class="nav-links flex gap-4 hidden md:flex">
-        <!-- Сюда можно добавлять ссылки на модули в будущем -->
+        <RouterLink to="/dashboard" class="nav-link" active-class="active">Главная</RouterLink>
+        <RouterLink to="/calendar" class="nav-link" active-class="active">Календарь</RouterLink>
       </div>
 
       <!-- Правая часть: переключатель темы + уведомления + пользователь + logout -->
@@ -82,9 +83,29 @@ const userInitial = computed(() => {
 }
 
 .user-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-hover);
   border-color: rgba(99, 102, 241, 0.3);
   transform: translateY(-1px);
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 4px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg-hover);
+}
+
+.nav-link.active {
+  color: var(--primary);
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .user-avatar {

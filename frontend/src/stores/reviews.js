@@ -30,7 +30,51 @@ export const useReviewsStore = defineStore('reviews', () => {
   async function fetchReviews() {
     loading.value = true
     try {
-      reviews.value = await api('GET', '/reviews', null, token())
+      const localReviews = await api('GET', '/reviews', null, token())
+      
+      // Попытка загрузить с Shikimori
+      let shikiReviews = []
+      try {
+        const auth = useAuthStore()
+        if (auth.user?.shikimori_user_id) {
+          const res = await fetch('/api/v1/auth/shikimori/rates', {
+            headers: { 'Authorization': `Bearer ${token()}` }
+          })
+          if (res.ok) {
+            const rates = await res.json()
+            // Мапим rates в формат наших reviews
+            shikiReviews = rates.map(rate => ({
+              id: 'shiki_' + rate.id, // Временный ID
+              title: rate.anime?.russian || rate.anime?.name,
+              content_type: 'anime',
+              status: rate.status === 'on_hold' ? 'planned' : rate.status, // Shikimori 'on_hold' -> planned (или можно оставить)
+              rating: rate.score || null,
+              notes: rate.text || '',
+              poster_url: rate.anime?.image?.original ? 'https://shikimori.one' + rate.anime.image.original : '',
+              shikimori_id: rate.anime?.id,
+              episodes_total: rate.anime?.episodes || null,
+              shikimori_score: parseFloat(rate.anime?.score) || null,
+              isShikimoriOnly: true
+            }))
+            
+            // Фильтруем: берем только Смотрю(watching), Просмотрено(completed), Брошено(dropped)
+            // Исключаем запланированное, как просил пользователь, чтобы не засорять список
+            shikiReviews = shikiReviews.filter(r => ['watching', 'completed', 'dropped'].includes(r.status))
+          }
+        }
+      } catch (err) {
+        console.warn('Не удалось загрузить списки Shikimori', err)
+      }
+
+      // Объединяем, удаляя дубликаты (если аниме есть и локально, и на shikimori, оставляем локальное)
+      const merged = [...localReviews]
+      for (const sr of shikiReviews) {
+        if (!merged.find(mr => mr.shikimori_id === sr.shikimori_id)) {
+          merged.push(sr)
+        }
+      }
+      reviews.value = merged
+
     } finally {
       loading.value = false
     }

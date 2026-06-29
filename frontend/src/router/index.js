@@ -62,6 +62,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/calendar',
+    name: 'calendar',
+    component: () => import('@/views/CalendarView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/screenshare',
     name: 'screenshare',
     component: () => import('@/views/screenshare/ScreenshareView.vue'),
