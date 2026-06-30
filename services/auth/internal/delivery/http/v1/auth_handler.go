@@ -486,7 +486,9 @@ func (h *AuthHandler) GetShikimoriWhoami(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, whoami)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(whoami)
 }
 
 // POST /api/v1/auth/shikimori/unlink
