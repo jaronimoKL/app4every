@@ -1,11 +1,19 @@
 <template>
   <div class="room-layout">
     <header class="room-header glass">
-        <div class="header-left">
+      <div class="header-left">
         <router-link to="/reviews" class="btn-back">🚪 Выйти к рецензиям</router-link>
         <h2>📺 Watch Party</h2>
         <span class="room-id">Комната: {{ roomId }}</span>
       </div>
+      
+      <!-- Центральная кнопка для вызова панели выбора -->
+      <div class="header-center" style="display:flex; justify-content:center; flex:1;">
+        <button class="btn-primary" @click="toggleMediaSelector" style="padding:8px 16px; font-size:14px; border-radius:16px; display:flex; align-items:center; gap:8px;">
+          <span>🎬</span> Выбрать из списка
+        </button>
+      </div>
+
       <div class="header-right" style="display:flex; gap:12px; align-items:center;">
         <button class="btn-ghost" @click="isTheaterMode = !isTheaterMode" style="padding:8px 12px; font-size:13px; display:flex; align-items:center; gap:6px;">
           <svg v-if="!isTheaterMode" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
@@ -15,6 +23,68 @@
         <button class="btn-copy" @click="copyLink">🔗 Копировать ссылку</button>
       </div>
     </header>
+
+    <!-- Выпадающая панель выбора медиа -->
+    <transition name="slide-down">
+      <div v-if="showMediaSelector" class="media-selector-drawer glass">
+        <div class="drawer-header flex justify-between items-center mb-4">
+          <div class="tabs flex gap-2">
+            <button class="drawer-tab" :class="{active: selectorTab === 'personal'}" @click="selectorTab = 'personal'">Личные</button>
+            <button class="drawer-tab" :class="{active: selectorTab === 'group'}" @click="selectorTab = 'group'">Групповые</button>
+          </div>
+          <button class="btn-ghost" @click="showMediaSelector = false" style="padding:4px 8px;">✕ Закрыть</button>
+        </div>
+        
+        <div class="drawer-content">
+          <!-- Личные рецензии -->
+          <div v-if="selectorTab === 'personal'" class="drawer-grid">
+            <div v-if="reviewsStore.loading" class="spinner-small" style="margin:20px auto;"></div>
+            <div v-else-if="reviewsStore.reviews.length === 0" class="text-center text-muted" style="grid-column: 1/-1;">Список пуст</div>
+            <div v-else v-for="rev in reviewsStore.reviews" :key="rev.id" class="media-item-card" @click="selectMediaToWatch(rev)">
+              <img :src="rev.poster_url || '/placeholder.png'" class="media-item-poster" />
+              <div class="media-item-info">
+                <div class="media-item-title">{{ rev.title }}</div>
+                <div class="media-item-type">{{ rev.content_type }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Групповые списки -->
+          <div v-if="selectorTab === 'group'" class="drawer-group-view">
+            <div v-if="groupsStore.loading" class="spinner-small" style="margin:20px auto;"></div>
+            <div v-else-if="groupsStore.groups.length === 0" class="text-center text-muted">Нет групп</div>
+            <template v-else>
+              <!-- Слайдер групп -->
+              <div class="groups-slider mb-4">
+                <button 
+                  v-for="group in groupsStore.groups" 
+                  :key="group.id" 
+                  class="group-pill"
+                  :class="{ active: selectedGroupId === group.id }"
+                  @click="toggleGroupSelection(group.id)"
+                >
+                  👥 {{ group.name }}
+                </button>
+              </div>
+              <!-- Список тайтлов в выбранной группе -->
+              <div v-if="selectedGroupId" class="drawer-grid">
+                <div v-if="!selectedGroupItems || selectedGroupItems.length === 0" class="text-center text-muted" style="grid-column: 1/-1;">В этой группе нет тайтлов</div>
+                <div v-else v-for="item in selectedGroupItems" :key="item.id" class="media-item-card" @click="selectMediaToWatch(item)">
+                  <img :src="item.poster_url || '/placeholder.png'" class="media-item-poster" />
+                  <div class="media-item-info">
+                    <div class="media-item-title">{{ item.title }}</div>
+                    <div class="media-item-type">{{ item.content_type }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center text-muted mt-6 mb-6">
+                👆 Выберите группу, чтобы посмотреть её тайтлы
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <div class="room-content" :class="{ 'theater-mode': isTheaterMode }">
       <div class="main-area">
@@ -259,9 +329,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useReviewsStore } from '@/stores/reviews'
+import { useGroupsStore } from '@/stores/groups'
 import { useWatchParty } from '@/composables/useWatchParty'
 import YouTubePlayer from '@/components/watchparty/YouTubePlayer.vue'
 import DirectVideoPlayer from '@/components/watchparty/DirectVideoPlayer.vue'
@@ -288,6 +360,67 @@ const {
 } = useWatchParty()
 
 const editUrl = ref('')
+const showMediaSelector = ref(false)
+const selectorTab = ref('personal')
+const selectedGroupId = ref(null)
+
+async function toggleMediaSelector() {
+  showMediaSelector.value = !showMediaSelector.value
+  if (showMediaSelector.value) {
+    // Подгружаем списки, если они еще не загружены
+    if (reviewsStore.reviews.length === 0 && !reviewsStore.loading) {
+      reviewsStore.fetchReviews()
+    }
+    if (groupsStore.groups.length === 0 && !groupsStore.loading) {
+      groupsStore.fetchGroups()
+    }
+  }
+}
+
+function toggleGroupSelection(id) {
+  if (selectedGroupId.value === id) {
+    selectedGroupId.value = null // Скрываем, если нажали повторно
+  } else {
+    selectedGroupId.value = id
+  }
+}
+
+const selectedGroupItems = computed(() => {
+  if (!selectedGroupId.value) return []
+  const group = groupsStore.groups.find(g => g.id === selectedGroupId.value)
+  return group ? group.items : []
+})
+
+function selectMediaToWatch(item) {
+  if (!roomState.isOwner) {
+    alert('Только хост комнаты может переключать видео!')
+    return
+  }
+  
+  const shId = item.shikimori_id
+  const alias = item.aniliberty_alias
+  
+  if (!shId && !alias && (!item.links || item.links.length === 0)) {
+    alert('У этого тайтла нет привязок для воспроизведения.')
+    return
+  }
+
+  // Строим URL как в ReviewView /handleWatchTogether
+  let urlStr = ''
+  if (shId && alias) {
+    urlStr = `https://anilibria.top/api/v1/anime/player?shikimori=${shId}&alias=${alias}&episode=1`
+  } else if (shId) {
+    urlStr = `https://kodik.info/find-player?shikimoriID=${shId}&types=anime,anime-serial`
+  } else if (item.links && item.links.length > 0) {
+    urlStr = item.links[0].url
+  } else {
+    urlStr = `https://kodik.info/find-player?title=${encodeURIComponent(item.title)}`
+  }
+
+  changeVideo(urlStr, 'kodik')
+  showMediaSelector.value = false
+}
+
 const isTheaterMode = ref(false)
 const isTitleExpanded = ref(false)
 const isTitleLong = computed(() => {
@@ -1574,5 +1707,154 @@ h3 {
 .btn-sm {
   padding: 6px 12px;
   font-size: 0.8rem;
+}
+
+/* --- Стили для выпадающей панели медиа (Media Selector) --- */
+.media-selector-drawer {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 800px;
+  max-height: 70vh;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  padding: 20px;
+}
+
+.slide-down-enter-active, .slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.slide-down-enter-from, .slide-down-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -20px);
+}
+
+.drawer-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.drawer-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.drawer-tab.active {
+  background: var(--primary-color, #60a5fa);
+  color: #fff;
+}
+
+.drawer-content {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px;
+}
+.drawer-content::-webkit-scrollbar {
+  width: 6px;
+}
+.drawer-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.media-item-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.media-item-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.media-item-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+}
+
+.media-item-info {
+  padding: 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-item-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.media-item-type {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: auto;
+  text-transform: capitalize;
+}
+
+.groups-slider {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.groups-slider::-webkit-scrollbar {
+  height: 4px;
+}
+.groups-slider::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.group-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.group-pill:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.group-pill.active {
+  background: #10b981;
+  border-color: #34d399;
+  color: #fff;
 }
 </style>
