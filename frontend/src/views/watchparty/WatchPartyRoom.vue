@@ -1680,6 +1680,11 @@ h3 {
   overflow-y: visible;
   padding: 16px 24px;
 }
+.room-content.theater-mode .player-wrapper {
+  flex: none;
+  height: 80vh;
+  min-height: unset;
+}
 .room-content.theater-mode .side-panel {
   width: 100%;
   border-left: none;

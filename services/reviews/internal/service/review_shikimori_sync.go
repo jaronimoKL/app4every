@@ -61,42 +61,77 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 		return fmt.Errorf("shikimori user id is 0")
 	}
 
-	// 2. Query Shikimori GraphQL API
-	query := `query {
-		userRates(userId: %d, targetType: Anime, limit: 500) {
-			id
-			status
-			score
-			episodes
-			anime {
+	// 2. Query Shikimori GraphQL API with pagination
+	var allRates []struct {
+		ID       string `json:"id"`
+		Status   string `json:"status"`
+		Score    int    `json:"score"`
+		Episodes int    `json:"episodes"`
+		Anime    *struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Russian string `json:"russian"`
+			Poster  *struct {
+				OriginalUrl string `json:"originalUrl"`
+			} `json:"poster"`
+			Score    float64 `json:"score"`
+			Episodes int     `json:"episodes"`
+			Genres   []struct {
+				Name    string `json:"name"`
+				Russian string `json:"russian"`
+			} `json:"genres"`
+		} `json:"anime"`
+	}
+
+	page := 1
+	limit := 50
+	for {
+		query := `query {
+			userRates(userId: %d, targetType: Anime, limit: %d, page: %d) {
 				id
-				name
-				russian
-				poster { originalUrl }
+				status
 				score
 				episodes
-				genres { name russian }
+				anime {
+					id
+					name
+					russian
+					poster { originalUrl }
+					score
+					episodes
+					genres { name russian }
+				}
 			}
+		}`
+		q := fmt.Sprintf(query, tokens.ShikimoriUserID, limit, page)
+		
+		payload := map[string]string{"query": q}
+		bodyBytes, _ := json.Marshal(payload)
+
+		sReq, _ := http.NewRequestWithContext(ctx, "POST", "https://shikimori.io/api/graphql", bytes.NewBuffer(bodyBytes))
+		sReq.Header.Set("Content-Type", "application/json")
+		sReq.Header.Set("User-Agent", "App4Every")
+
+		sResp, err := client.Do(sReq)
+		if err != nil {
+			return fmt.Errorf("shikimori graphql error at page %d: %w", page, err)
 		}
-	}`
-	q := fmt.Sprintf(query, tokens.ShikimoriUserID)
-	
-	payload := map[string]string{"query": q}
-	bodyBytes, _ := json.Marshal(payload)
 
-	sReq, _ := http.NewRequestWithContext(ctx, "POST", "https://shikimori.io/api/graphql", bytes.NewBuffer(bodyBytes))
-	sReq.Header.Set("Content-Type", "application/json")
-	sReq.Header.Set("User-Agent", "App4Every")
+		var gqlResp ShikimoriGraphQLResponse
+		err = json.NewDecoder(sResp.Body).Decode(&gqlResp)
+		sResp.Body.Close()
 
-	sResp, err := client.Do(sReq)
-	if err != nil {
-		return fmt.Errorf("shikimori graphql error: %w", err)
-	}
-	defer sResp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("failed to decode graphql at page %d: %w", page, err)
+		}
 
-	var gqlResp ShikimoriGraphQLResponse
-	if err := json.NewDecoder(sResp.Body).Decode(&gqlResp); err != nil {
-		return fmt.Errorf("failed to decode graphql: %w", err)
+		rates := gqlResp.Data.UserRates
+		allRates = append(allRates, rates...)
+
+		if len(rates) < limit {
+			break
+		}
+		page++
 	}
 
 	// 3. Fetch user's existing reviews
@@ -112,7 +147,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 	}
 
 	// 4. Sync each item
-	for _, rate := range gqlResp.Data.UserRates {
+	for _, rate := range allRates {
 		if rate.Anime == nil {
 			continue
 		}
