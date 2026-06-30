@@ -33,7 +33,8 @@ export const useGroupsStore = defineStore('groups', () => {
   async function fetchGroups() {
     loading.value = true
     try {
-      groups.value = await api('GET', '/groups', null, token())
+      const res = await api('GET', '/groups', null, token())
+      groups.value = res || []
     } finally {
       loading.value = false
     }

@@ -30,7 +30,8 @@ export const useReviewsStore = defineStore('reviews', () => {
   async function fetchReviews() {
     loading.value = true
     try {
-      const localReviews = await api('GET', '/reviews', null, token())
+      let localReviews = await api('GET', '/reviews', null, token())
+      if (!localReviews) localReviews = []
       
       // Попытка загрузить с Shikimori
       let shikiReviews = []

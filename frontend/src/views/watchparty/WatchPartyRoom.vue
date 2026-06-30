@@ -9,8 +9,9 @@
       
       <!-- Центральная кнопка для вызова панели выбора -->
       <div class="header-center" style="display:flex; justify-content:center; flex:1;">
-        <button class="btn-primary" @click="toggleMediaSelector" style="padding:8px 16px; font-size:14px; border-radius:16px; display:flex; align-items:center; gap:8px;">
-          <span>🎬</span> Выбрать из списка
+        <button class="btn-text" @click="toggleMediaSelector" style="font-size:14px; font-weight: 500; color: rgba(255,255,255,0.7); display:flex; align-items:center; gap:6px; background:transparent; border:none; cursor:pointer;">
+          Выбрать другое
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: showMediaSelector ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
       </div>
 
