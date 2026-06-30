@@ -85,7 +85,7 @@ func (s *authService) GetShikimoriRates(ctx context.Context, userID int64) ([]by
 		return nil, fmt.Errorf("shikimori account not linked")
 	}
 
-	url := fmt.Sprintf("https://shikimori.io/api/users/%d/anime_rates?limit=5000&status=watching,completed,dropped", *user.ShikimoriUserID)
+	url := fmt.Sprintf("https://shikimori.io/api/users/%d/anime_rates?limit=5000", *user.ShikimoriUserID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+*user.ShikimoriAccessToken)
 	req.Header.Set("User-Agent", "App4Every")

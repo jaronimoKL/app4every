@@ -18,9 +18,16 @@
             </span>
           </RouterLink>
         </div>
-        <button class="add-btn" @click="openCreate">
-          <span>＋</span> Добавить
-        </button>
+        <div class="flex items-center gap-3">
+          <button v-if="auth.user?.shikimori_user_id" class="btn btn-outline" style="padding:7px 12px;font-size:13px;" @click="syncWithShikimori">
+            <span v-if="store.loading" class="spinner" style="width:14px;height:14px;margin-right:6px;"></span>
+            <span v-else style="margin-right:4px;">🔄</span>
+            Синхронизировать
+          </button>
+          <button class="add-btn" @click="openCreate">
+            <span>＋</span> Добавить
+          </button>
+        </div>
       </div>
     </nav>
 
@@ -409,12 +416,18 @@ import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useReviewsStore } from '@/stores/reviews'
 import { useGroupsStore } from '@/stores/groups'
+import { useAuthStore } from '@/stores/auth'
 import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
 import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
 
 const router = useRouter()
 const store = useReviewsStore()
 const groupsStore = useGroupsStore()
+const auth = useAuthStore()
+
+async function syncWithShikimori() {
+  await store.fetchReviews()
+}
 
 // ── Инициализация ──
 onMounted(async () => {
