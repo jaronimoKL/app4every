@@ -74,6 +74,34 @@
           </label>
         </div>
 
+        <!-- Shikimori фильтр -->
+        <div class="shikimori-filter flex items-center bg-[rgba(255,255,255,0.05)] rounded-md p-1">
+          <button 
+            class="shikimori-btn" 
+            :class="{ active: selectedShikimoriFilter === 'all' }" 
+            @click="selectedShikimoriFilter = 'all'"
+            title="Все рецензии"
+          >
+            <div class="shiki-icon shiki-half"></div>
+          </button>
+          <button 
+            class="shikimori-btn" 
+            :class="{ active: selectedShikimoriFilter === 'shikimori_only' }" 
+            @click="selectedShikimoriFilter = 'shikimori_only'"
+            title="Только с Shikimori"
+          >
+            <div class="shiki-icon shiki-full"></div>
+          </button>
+          <button 
+            class="shikimori-btn" 
+            :class="{ active: selectedShikimoriFilter === 'app_only' }" 
+            @click="selectedShikimoriFilter = 'app_only'"
+            title="Созданные в приложении"
+          >
+            <div class="shiki-icon shiki-empty"></div>
+          </button>
+        </div>
+
         <!-- Кнопка сброса -->
         <button
           v-if="isAnyFilterActive"
@@ -142,7 +170,7 @@
               {{ typeIcon(rev.content_type) }} {{ typeLabel(rev.content_type) }}
             </div>
             <!-- Бейдж Shikimori -->
-            <div v-if="rev.isShikimoriOnly" class="shikimori-badge">
+            <div v-if="rev.shikimori_id" class="shikimori-badge">
               <span title="Синхронизировано с Shikimori">⛩️ Shikimori</span>
             </div>
             <!-- Оценка -->
@@ -426,7 +454,7 @@ const groupsStore = useGroupsStore()
 const auth = useAuthStore()
 
 async function syncWithShikimori() {
-  await store.fetchReviews()
+  await store.syncWithShikimori()
 }
 
 // ── Инициализация ──
@@ -445,6 +473,14 @@ const tabs = [
     countBg: 'rgba(6,182,212,0.3)',
     emptyTitle: 'Сейчас ничего не смотришь',
     emptyDesc: 'Добавь то, что смотришь прямо сейчас',
+  },
+  {
+    key: 'on_hold',
+    icon: '⏸',
+    label: 'Отложено',
+    countBg: 'rgba(234,179,8,0.3)', // yellow-ish
+    emptyTitle: 'Нет отложенных',
+    emptyDesc: 'Здесь будут тайтлы, отложенные на потом',
   },
   {
     key: 'completed',
@@ -482,25 +518,29 @@ const statusOptions = [
   { value: 'watching',  icon: '📺', label: 'Смотрю',       color: '#06b6d4' },
   { value: 'completed', icon: '✅', label: 'Просмотрено',  color: '#22c55e' },
   { value: 'planned',   icon: '📋', label: 'Запланировано', color: '#6366f1' },
+  { value: 'on_hold',   icon: '⏸', label: 'Отложено',     color: '#eab308' },
   { value: 'dropped',   icon: '⛔', label: 'Брошено',      color: '#ef4444' },
 ]
 
 // ── Поиск и фильтры ──
 
-const searchQuery = ref('')
-const selectedGenres = ref(new Set())
-const selectedContentType = ref('all')
+const searchQuery        = ref('')
+const selectedContentType= ref('all')
+const selectedGenres     = ref(new Set())
+const selectedShikimoriFilter = ref('all') // 'all', 'app_only', 'shikimori_only'
 
 const isAnyFilterActive = computed(() => {
-  return searchQuery.value.trim() !== '' ||
-         selectedContentType.value !== 'all' ||
-         selectedGenres.value.size > 0
+  return searchQuery.value.trim() !== '' 
+      || selectedContentType.value !== 'all' 
+      || selectedGenres.value.size > 0
+      || selectedShikimoriFilter.value !== 'all'
 })
 
 function resetFilters() {
   searchQuery.value = ''
   selectedContentType.value = 'all'
   selectedGenres.value.clear()
+  selectedShikimoriFilter.value = 'all'
 }
 
 function toggleFilterGenre(genreName) {
@@ -539,6 +579,12 @@ const currentReviews = computed(() => {
 
   if (selectedContentType.value && selectedContentType.value !== 'all') {
     list = list.filter(r => r.content_type === selectedContentType.value)
+  }
+
+  if (selectedShikimoriFilter.value === 'app_only') {
+    list = list.filter(r => !r.shikimori_id)
+  } else if (selectedShikimoriFilter.value === 'shikimori_only') {
+    list = list.filter(r => !!r.shikimori_id)
   }
 
   if (selectedGenres.value.size > 0) {
@@ -1371,5 +1417,51 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   .modal-box { max-width: 100%; max-height: 95vh; }
   .type-selector { flex-direction: column; }
   .new-link-row { grid-template-columns: 1fr; }
+}
+</style>
+
+<style scoped>
+/* Shikimori Filter */
+.shikimori-filter {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+.shikimori-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+.shikimori-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.9;
+}
+.shikimori-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 1;
+}
+.shiki-icon {
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-radius: 3px;
+}
+.shiki-full {
+  background: white;
+}
+.shiki-empty {
+  background: transparent;
+}
+.shiki-half {
+  background: linear-gradient(135deg, white 50%, transparent 50%);
 }
 </style>

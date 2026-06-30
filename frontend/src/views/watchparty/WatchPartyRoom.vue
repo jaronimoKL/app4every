@@ -345,6 +345,8 @@ import AllohaVideoPlayer from '@/components/watchparty/AllohaVideoPlayer.vue'
 const route = useRoute()
 const roomId = route.params.roomId
 const auth = useAuthStore()
+const reviewsStore = useReviewsStore()
+const groupsStore = useGroupsStore()
 
 const {
   roomState,
@@ -365,15 +367,15 @@ const showMediaSelector = ref(false)
 const selectorTab = ref('personal')
 const selectedGroupId = ref(null)
 
-async function toggleMediaSelector() {
-  showMediaSelector.value = !showMediaSelector.value
+function toggleMediaSelector() {
+  console.log("toggleMediaSelector clicked", showMediaSelector.value);
+  showMediaSelector.value = !showMediaSelector.value;
   if (showMediaSelector.value) {
-    // Подгружаем списки, если они еще не загружены
     if (reviewsStore.reviews.length === 0 && !reviewsStore.loading) {
-      reviewsStore.fetchReviews()
+      reviewsStore.fetchReviews();
     }
     if (groupsStore.groups.length === 0 && !groupsStore.loading) {
-      groupsStore.fetchGroups()
+      groupsStore.fetchGroups();
     }
   }
 }
@@ -1008,6 +1010,7 @@ onMounted(() => {
   height: calc(100vh - 60px);
   background: var(--bg-color, #121212);
   color: #fff;
+  position: relative;
 }
 
 .room-header {

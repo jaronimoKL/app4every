@@ -261,3 +261,20 @@ func (h *ReviewHandler) HandleReviewsByID(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
 	}
 }
+
+// POST /api/v1/reviews/sync-shikimori
+func (h *ReviewHandler) SyncShikimori(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		return
+	}
+
+	uid := userID(r)
+	if err := h.svc.SyncShikimori(r.Context(), uid); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"success"}`))
+}

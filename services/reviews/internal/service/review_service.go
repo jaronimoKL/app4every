@@ -24,6 +24,7 @@ type ReviewService interface {
 	DeleteLink(ctx context.Context, linkID, reviewID, userID int64) error
 	AddGenre(ctx context.Context, reviewID, userID int64, name string) (*model.ReviewGenre, error)
 	DeleteGenre(ctx context.Context, genreID, reviewID, userID int64) error
+	SyncShikimori(ctx context.Context, userID int64) error
 }
 
 type reviewService struct {

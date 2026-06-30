@@ -21,6 +21,7 @@ const (
 	StatusCompleted ReviewStatus = "completed"
 	StatusPlanned   ReviewStatus = "planned"
 	StatusDropped   ReviewStatus = "dropped"
+	StatusOnHold    ReviewStatus = "on_hold"
 )
 
 // ── Сущности ──

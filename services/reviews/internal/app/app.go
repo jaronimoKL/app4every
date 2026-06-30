@@ -49,6 +49,7 @@ func Run() error {
 
 	// /api/v1/reviews      → list + create
 	// /api/v1/reviews/     → by ID, links management
+	mux.Handle("/api/v1/reviews/sync-shikimori", auth(http.HandlerFunc(handler.SyncShikimori)))
 	mux.Handle("/api/v1/reviews", auth(http.HandlerFunc(handler.HandleReviews)))
 	mux.Handle("/api/v1/reviews/", auth(http.HandlerFunc(handler.HandleReviewsByID)))
 
