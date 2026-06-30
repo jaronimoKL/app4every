@@ -1,17 +1,22 @@
 <template>
   <div class="room-layout">
     <header class="room-header glass">
-      <div class="header-left">
+        <div class="header-left">
         <router-link to="/reviews" class="btn-back">🚪 Выйти к рецензиям</router-link>
         <h2>📺 Watch Party</h2>
         <span class="room-id">Комната: {{ roomId }}</span>
       </div>
-      <div class="header-right">
+      <div class="header-right" style="display:flex; gap:12px; align-items:center;">
+        <button class="btn-ghost" @click="isTheaterMode = !isTheaterMode" style="padding:8px 12px; font-size:13px; display:flex; align-items:center; gap:6px;">
+          <svg v-if="!isTheaterMode" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+          {{ isTheaterMode ? 'Свернуть плеер' : 'Широкий экран' }}
+        </button>
         <button class="btn-copy" @click="copyLink">🔗 Копировать ссылку</button>
       </div>
     </header>
 
-    <div class="room-content">
+    <div class="room-content" :class="{ 'theater-mode': isTheaterMode }">
       <div class="main-area">
         <div class="player-wrapper">
           <!-- Warnings -->
@@ -164,68 +169,40 @@
           <button @click="updateUrl" class="btn-change">Сменить видео</button>
         </div>
 
-        <!-- Информация о медиа -->
-        <div class="media-info-panel glass animate-fade-in mt-4" v-if="hasAnimeMetadata || roomState.videoUrl">
-          <!-- Заглушка для не-аниме (или если shikimori_id нет) -->
-          <template v-if="!hasAnimeMetadata">
-            <div class="media-header flex gap-4 items-start">
-              <div class="media-poster-placeholder flex justify-center items-center">
-                🎬
-              </div>
-              <div class="media-details flex-1">
-                <h2 class="media-title">Видео</h2>
-                <a :href="roomState.videoUrl" target="_blank" class="media-link mt-2 inline-block" style="color: #60a5fa; text-decoration: none;">
-                  🔗 {{ roomState.videoUrl }}
-                </a>
-              </div>
-            </div>
-          </template>
-          <!-- Информация об аниме -->
-          <template v-else>
-            <div v-if="isLoadingShikimoriDetails" class="loading-state">
-              <div class="spinner-small"></div>
-              <span>Загрузка информации об аниме...</span>
-            </div>
-            <div v-else-if="shikimoriDetails" class="media-info-content">
-              <div class="media-header flex gap-4 items-start">
-                <img :src="`https://shikimori.io${shikimoriDetails.image?.original}`" class="media-poster" alt="Постер" />
-                <div class="media-details flex-1">
-                  <h2 class="media-title">{{ shikimoriDetails.russian || shikimoriDetails.name }}</h2>
-                  <div class="media-rating mt-2 flex items-center">
-                    <span class="rating-star" style="color: #fbbf24; font-size: 16px;">★</span>
-                    <span style="font-weight: bold; font-size: 16px; margin-left: 4px;">{{ shikimoriDetails.score }}</span>
-                    <span style="color: rgba(255,255,255,0.5); font-size: 13px; margin-left: 6px;">({{ shikimoriVotes }} голосов)</span>
-                  </div>
-                  <div class="media-description mt-3 text-sm" v-html="shikimoriDetails.description_html || shikimoriDetails.description"></div>
-                  
-                  <div class="media-characters-section mt-4" v-if="shikimoriMainCharacters.length > 0">
-                    <button class="btn btn-outline btn-sm" @click="showCharacters = !showCharacters">
-                      {{ showCharacters ? 'Скрыть персонажей' : 'Показать персонажей' }}
-                    </button>
-                    <div v-if="showCharacters" class="characters-grid mt-3">
-                      <div v-for="role in shikimoriMainCharacters" :key="role.character.id" class="character-card">
-                        <img :src="`https://shikimori.io${role.character.image.original}`" class="character-img" />
-                        <div class="character-info">
-                          <div class="character-name">{{ role.character.russian || role.character.name }}</div>
-                          <div class="character-role">{{ role.roles_russian[0] || role.roles[0] }}</div>
-                        </div>
-                      </div>
-                    </div>
+        <!-- Информация о медиа (Только описание и персонажи) -->
+        <div class="media-info-panel glass animate-fade-in mt-4" v-if="hasAnimeMetadata">
+          <div v-if="isLoadingShikimoriDetails" class="loading-state">
+            <div class="spinner-small"></div>
+            <span>Загрузка информации об аниме...</span>
+          </div>
+          <div v-else-if="shikimoriDetails" class="media-info-content">
+            <div class="media-description text-sm" v-html="shikimoriDetails.description_html || shikimoriDetails.description"></div>
+            
+            <div class="media-characters-section mt-4" v-if="shikimoriMainCharacters.length > 0">
+              <button class="btn btn-outline btn-sm" @click="showCharacters = !showCharacters">
+                {{ showCharacters ? 'Скрыть персонажей' : 'Показать персонажей' }}
+              </button>
+              <div v-if="showCharacters" class="characters-slider mt-3">
+                <div v-for="role in shikimoriMainCharacters" :key="role.character.id" class="character-card">
+                  <img :src="`https://shikimori.io${role.character.image.original}`" class="character-img" />
+                  <div class="character-info">
+                    <div class="character-name" :title="role.character.russian || role.character.name">{{ role.character.russian || role.character.name }}</div>
+                    <div class="character-role">{{ role.roles_russian[0] || role.roles[0] }}</div>
                   </div>
                 </div>
               </div>
             </div>
-          </template>
+          </div>
         </div>
       </div>
 
       <aside class="side-panel glass">
         <div class="participants-section">
           <h3>Участники ({{ roomState.participants.length }})</h3>
-          <ul class="participant-list">
+          <ul class="participant-list custom-scroll">
             <li v-for="p in roomState.participants" :key="p.user_id" class="participant-item">
               <span class="status-dot"></span>
-              <span class="name">{{ p.username }} <span v-if="p.is_owner">(Host)</span></span>
+              <span class="name">{{ p.username }} <span v-if="p.is_owner" style="color:var(--text-muted); font-size:0.85em;">(Host)</span></span>
               <button 
                 v-if="roomState.isOwner && !p.is_owner" 
                 class="btn-kick" 
@@ -236,6 +213,33 @@
               </button>
             </li>
           </ul>
+        </div>
+
+        <!-- Информация об аниме в сайдбаре -->
+        <div class="sidebar-media-info mt-4" v-if="hasAnimeMetadata && shikimoriDetails">
+          <img :src="`https://shikimori.io${shikimoriDetails.image?.original}`" class="sidebar-media-poster" alt="Постер" />
+          <div class="sidebar-media-details">
+            <h2 class="sidebar-media-title" :class="{'expanded': isTitleExpanded}">{{ shikimoriDetails.russian || shikimoriDetails.name }}</h2>
+            <button v-if="isTitleLong" @click="isTitleExpanded = !isTitleExpanded" class="btn-text-expand">
+              {{ isTitleExpanded ? 'Свернуть' : 'Развернуть' }}
+            </button>
+            <div class="sidebar-media-rating mt-2">
+              <span class="rating-star" style="color: #fbbf24; font-size: 16px;">★</span>
+              <span style="font-weight: bold; font-size: 16px; margin-left: 4px;">{{ shikimoriDetails.score }}</span>
+              <span style="color: rgba(255,255,255,0.5); font-size: 12px; margin-left: 6px;">({{ shikimoriVotes }} оценок)</span>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-media-info mt-4" v-else-if="!hasAnimeMetadata && roomState.videoUrl">
+          <div class="sidebar-media-poster-placeholder">
+            🎬
+          </div>
+          <div class="sidebar-media-details">
+            <h2 class="sidebar-media-title">Видео</h2>
+            <a :href="roomState.videoUrl" target="_blank" class="sidebar-media-link mt-1 inline-block">
+              🔗 Ссылка на видео
+            </a>
+          </div>
         </div>
 
         <!-- Knock Requests (Owner only) -->
@@ -269,21 +273,32 @@ const route = useRoute()
 const roomId = route.params.roomId
 const auth = useAuthStore()
 
-const { 
-  roomState, 
-  playerRef, 
-  connect, 
-  onLocalPlay, 
-  onLocalPause, 
-  onLocalSeek, 
-  changeVideo, 
-  admitUser, 
-  rejectUser, 
+const {
+  roomState,
+  playerRef,
+  connect,
+  onLocalPlay,
+  onLocalPause,
+  onLocalSeek,
+  onLocalEpisodeChange,
+  changeVideo,
+  switchPlayer,
+  updateUserStatus,
   kickUser,
+  admitUser,
+  rejectUser,
   updateMetadata
 } = useWatchParty()
 
 const editUrl = ref('')
+const isTheaterMode = ref(false)
+const isTitleExpanded = ref(false)
+const isTitleLong = computed(() => {
+  if (!shikimoriDetails.value) return false
+  const title = shikimoriDetails.value.russian || shikimoriDetails.value.name
+  return title && title.length > 35 // rough heuristic for 2 lines
+})
+
 const activeMirror = 'video.kodik.online' // можно использовать aniqit.com или другой
 const currentShikimoriId = ref(sessionStorage.getItem(`wp_shikimori_${roomId}`) || '')
 const currentAlias = ref(sessionStorage.getItem(`wp_alias_${roomId}`) || '')
@@ -1401,20 +1416,20 @@ h3 {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
 }
-.characters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+
+.characters-slider {
+  display: flex;
   gap: 12px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
 }
-.characters-grid::-webkit-scrollbar {
-  width: 4px;
+.characters-slider::-webkit-scrollbar {
+  height: 6px;
 }
-.characters-grid::-webkit-scrollbar-thumb {
+.characters-slider::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
+  border-radius: 3px;
 }
 .character-card {
   display: flex;
@@ -1423,30 +1438,142 @@ h3 {
   border-radius: 8px;
   overflow: hidden;
   align-items: center;
+  flex: 0 0 160px; /* fixed width for horizontal scroll */
+  scroll-snap-align: start;
 }
 .character-img {
-  width: 50px;
-  height: 70px;
+  width: 40px;
+  height: 56px;
   object-fit: cover;
   flex-shrink: 0;
 }
 .character-info {
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  overflow: hidden;
 }
 .character-name {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #fff;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .character-role {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 4px;
 }
+
+/* Стили для сайдбара и theater-mode */
+.participant-list.custom-scroll {
+  max-height: 160px; /* ~4-5 participants */
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.participant-list.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.participant-list.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.sidebar-media-info {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+}
+.sidebar-media-poster {
+  width: 100%;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  margin-bottom: 12px;
+}
+.sidebar-media-poster-placeholder {
+  width: 100%;
+  height: 180px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+.sidebar-media-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sidebar-media-title.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.btn-text-expand {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 4px;
+}
+.sidebar-media-link {
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.room-content.theater-mode {
+  flex-direction: column;
+  overflow-y: auto;
+}
+.room-content.theater-mode .main-area {
+  overflow-y: visible;
+  padding: 16px 24px;
+}
+.room-content.theater-mode .side-panel {
+  width: 100%;
+  border-left: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.room-content.theater-mode .side-panel .participants-section {
+  flex: 1;
+  min-width: 300px;
+}
+.room-content.theater-mode .sidebar-media-info {
+  flex: 1;
+  min-width: 300px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+}
+.room-content.theater-mode .sidebar-media-poster {
+  width: 120px;
+  margin-bottom: 0;
+}
+.room-content.theater-mode .sidebar-media-poster-placeholder {
+  width: 120px;
+  height: 160px;
+  margin-bottom: 0;
+}
+
 .btn-sm {
   padding: 6px 12px;
   font-size: 0.8rem;
