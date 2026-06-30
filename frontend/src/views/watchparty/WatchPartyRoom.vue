@@ -287,8 +287,6 @@ const editUrl = ref('')
 const activeMirror = 'video.kodik.online' // можно использовать aniqit.com или другой
 const currentShikimoriId = ref(sessionStorage.getItem(`wp_shikimori_${roomId}`) || '')
 const currentAlias = ref(sessionStorage.getItem(`wp_alias_${roomId}`) || '')
-const currentEpisode = ref(1)
-const currentTranslationId = ref(null)
 
 const shikimoriDetails = ref(null)
 const shikimoriRoles = ref([])
