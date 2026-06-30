@@ -163,8 +163,59 @@
           <input v-model="editUrl" type="text" placeholder="Новая ссылка на видео..." class="url-input" />
           <button @click="updateUrl" class="btn-change">Сменить видео</button>
         </div>
-        <div class="url-display glass" v-else-if="!roomState.error">
-          Текущее видео: {{ roomState.videoUrl || 'Не выбрано' }}
+
+        <!-- Информация о медиа -->
+        <div class="media-info-panel glass animate-fade-in mt-4" v-if="hasAnimeMetadata || roomState.videoUrl">
+          <!-- Заглушка для не-аниме (или если shikimori_id нет) -->
+          <template v-if="!hasAnimeMetadata">
+            <div class="media-header flex gap-4 items-start">
+              <div class="media-poster-placeholder flex justify-center items-center">
+                🎬
+              </div>
+              <div class="media-details flex-1">
+                <h2 class="media-title">Видео</h2>
+                <a :href="roomState.videoUrl" target="_blank" class="media-link mt-2 inline-block" style="color: #60a5fa; text-decoration: none;">
+                  🔗 {{ roomState.videoUrl }}
+                </a>
+              </div>
+            </div>
+          </template>
+          <!-- Информация об аниме -->
+          <template v-else>
+            <div v-if="isLoadingShikimoriDetails" class="loading-state">
+              <div class="spinner-small"></div>
+              <span>Загрузка информации об аниме...</span>
+            </div>
+            <div v-else-if="shikimoriDetails" class="media-info-content">
+              <div class="media-header flex gap-4 items-start">
+                <img :src="`https://shikimori.io${shikimoriDetails.image?.original}`" class="media-poster" alt="Постер" />
+                <div class="media-details flex-1">
+                  <h2 class="media-title">{{ shikimoriDetails.russian || shikimoriDetails.name }}</h2>
+                  <div class="media-rating mt-2 flex items-center">
+                    <span class="rating-star" style="color: #fbbf24; font-size: 16px;">★</span>
+                    <span style="font-weight: bold; font-size: 16px; margin-left: 4px;">{{ shikimoriDetails.score }}</span>
+                    <span style="color: rgba(255,255,255,0.5); font-size: 13px; margin-left: 6px;">({{ shikimoriVotes }} голосов)</span>
+                  </div>
+                  <div class="media-description mt-3 text-sm" v-html="shikimoriDetails.description_html || shikimoriDetails.description"></div>
+                  
+                  <div class="media-characters-section mt-4" v-if="shikimoriMainCharacters.length > 0">
+                    <button class="btn btn-outline btn-sm" @click="showCharacters = !showCharacters">
+                      {{ showCharacters ? 'Скрыть персонажей' : 'Показать персонажей' }}
+                    </button>
+                    <div v-if="showCharacters" class="characters-grid mt-3">
+                      <div v-for="role in shikimoriMainCharacters" :key="role.character.id" class="character-card">
+                        <img :src="`https://shikimori.io${role.character.image.original}`" class="character-img" />
+                        <div class="character-info">
+                          <div class="character-name">{{ role.character.russian || role.character.name }}</div>
+                          <div class="character-role">{{ role.roles_russian[0] || role.roles[0] }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -233,11 +284,26 @@ const {
 } = useWatchParty()
 
 const editUrl = ref('')
-const loadingDirect = ref(false)
-
-// Метаданные аниме, извлекаемые из sessionStorage или URL
+const activeMirror = 'video.kodik.online' // можно использовать aniqit.com или другой
 const currentShikimoriId = ref(sessionStorage.getItem(`wp_shikimori_${roomId}`) || '')
 const currentAlias = ref(sessionStorage.getItem(`wp_alias_${roomId}`) || '')
+const currentEpisode = ref(1)
+const currentTranslationId = ref(null)
+
+const shikimoriDetails = ref(null)
+const shikimoriRoles = ref([])
+const showCharacters = ref(false)
+const isLoadingShikimoriDetails = ref(false)
+
+const shikimoriVotes = computed(() => {
+  if (!shikimoriDetails.value || !shikimoriDetails.value.rates_scores_stats) return 0
+  return shikimoriDetails.value.rates_scores_stats.reduce((acc, stat) => acc + stat.value, 0)
+})
+
+const shikimoriMainCharacters = computed(() => {
+  if (!shikimoriRoles.value) return []
+  return shikimoriRoles.value.filter(r => r.character)
+})
 
 const hasAnimeMetadata = computed(() => {
   return currentShikimoriId.value !== ''
@@ -346,9 +412,31 @@ async function fetchRoomTranslations() {
   }
 }
 
-watch([currentShikimoriId, currentAlias], () => {
+watch([currentShikimoriId, currentAlias], async () => {
   fetchRoomTranslations()
-})
+
+  if (currentShikimoriId.value) sessionStorage.setItem(`wp_shikimori_${roomId}`, currentShikimoriId.value)
+  if (currentAlias.value) sessionStorage.setItem(`wp_alias_${roomId}`, currentAlias.value)
+
+  if (currentShikimoriId.value && hasAnimeMetadata.value) {
+    isLoadingShikimoriDetails.value = true
+    try {
+      const res = await fetch(`https://shikimori.io/api/animes/${currentShikimoriId.value}`)
+      if (res.ok) shikimoriDetails.value = await res.json()
+      
+      const rolesRes = await fetch(`https://shikimori.io/api/animes/${currentShikimoriId.value}/roles`)
+      if (rolesRes.ok) shikimoriRoles.value = await rolesRes.json()
+    } catch (e) {
+      console.error('Failed to load shikimori metadata', e)
+    } finally {
+      isLoadingShikimoriDetails.value = false
+    }
+  } else {
+    shikimoriDetails.value = null
+    shikimoriRoles.value = []
+    showCharacters.value = false
+  }
+}, { immediate: true })
 
 const currentTranslationId = computed(() => {
   if (!roomState.videoUrl) return ''
@@ -1271,5 +1359,98 @@ h3 {
 }
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Стили для панели информации о медиа */
+.media-info-panel {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.media-poster-placeholder {
+  width: 120px;
+  height: 170px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 40px;
+  flex-shrink: 0;
+}
+.media-poster {
+  width: 140px;
+  height: auto;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.media-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+.media-description {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.media-description::-webkit-scrollbar {
+  width: 4px;
+}
+.media-description::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.characters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.characters-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.characters-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.character-card {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  align-items: center;
+}
+.character-img {
+  width: 50px;
+  height: 70px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.character-info {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.character-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+}
+.character-role {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
 }
 </style>
