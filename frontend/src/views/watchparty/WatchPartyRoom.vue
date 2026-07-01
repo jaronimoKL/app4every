@@ -350,11 +350,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 
-// Import stores for progress sync
-import { useReviewsStore } from '@/stores/reviews'
-
-const reviewsStore = useReviewsStore()
-
 
 async function syncProgressWithList(episodeNum) {
   if (!shikimoriDetails.value || !auth.isAuthenticated) return
