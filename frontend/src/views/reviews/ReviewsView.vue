@@ -182,7 +182,7 @@
           <!-- Информация под постером -->
           <div class="card-info">
             <div class="card-title">{{ rev.title }}</div>
-            <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold" v-if="rev.episodes_total && rev.content_type !== \'movie\'">
+            <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold" v-if="rev.episodes_total && rev.content_type !== 'movie'">
               <span>🎬</span> Серия: {{ rev.current_episode || 0 }} из {{ rev.episodes_total }}
               <button 
                 class="btn btn-ghost !p-1 ml-auto hover:text-white"
