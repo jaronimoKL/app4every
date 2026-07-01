@@ -63,15 +63,11 @@
         </div>
         
         <!-- Тип контента (radio) -->
-        <div class="filter-types flex items-center gap-4">
-          <label class="radio-label">
-            <input type="radio" v-model="selectedContentType" value="all" />
-            <span>Все</span>
-          </label>
-          <label class="radio-label" v-for="t in contentTypes" :key="t.value">
-            <input type="radio" v-model="selectedContentType" :value="t.value" />
-            <span>{{ t.icon }} {{ t.label }}</span>
-          </label>
+        <div class="filter-types modern-pills">
+          <button class="pill-btn" :class="{active: selectedContentType === 'all'}" @click="selectedContentType = 'all'">Все</button>
+          <button v-for="t in contentTypes" :key="t.value" class="pill-btn" :class="{active: selectedContentType === t.value}" @click="selectedContentType = t.value">
+            {{ t.icon }} {{ t.label }}
+          </button>
         </div>
 
         <!-- Shikimori фильтр -->
@@ -173,17 +169,30 @@
             <div v-if="rev.shikimori_id" class="shikimori-badge">
               <span title="Синхронизировано с Shikimori">⛩️ Shikimori</span>
             </div>
-            <!-- Оценка -->
-            <div class="card-rating" v-if="rev.rating">
-              <span class="rating-star">★</span>
-              <span class="rating-num">{{ rev.rating }}</span>
-              <span class="rating-max">/10</span>
+            <!-- Оценка и Прогресс -->
+            <div class="card-badges-top-right" v-if="rev.rating || rev.episodes_total">
+              <div class="card-rating" v-if="rev.rating">
+                <span class="rating-star">★</span>
+                <span class="rating-num">{{ rev.rating }}</span>
+                <span class="rating-max">/10</span>
+              </div>
             </div>
           </div>
 
           <!-- Информация под постером -->
           <div class="card-info">
             <div class="card-title">{{ rev.title }}</div>
+            <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold" v-if="rev.episodes_total && rev.content_type !== \'movie\'">
+              <span>🎬</span> Серия: {{ rev.current_episode || 0 }} из {{ rev.episodes_total }}
+              <button 
+                class="btn btn-ghost !p-1 ml-auto hover:text-white"
+                v-if="(rev.current_episode || 0) < rev.episodes_total" 
+                @click.stop="incrementEpisode(rev)"
+                title="Отметить следующую серию просмотренной"
+              >
+                <span class="text-lg leading-none">+1</span>
+              </button>
+            </div>
             
             <!-- Теги жанров на карточке -->
             <div class="card-genres flex flex-wrap gap-1 mb-2" v-if="rev.genres && rev.genres.length > 0">
@@ -639,6 +648,7 @@ const form = reactive({
   episodes_total: null,
   aniliberty_alias: '',
   shikimori_score: null,
+  current_episode: 0,
 })
 
 function resetForm() {
@@ -655,13 +665,39 @@ function resetForm() {
   form.episodes_total = null
   form.aniliberty_alias = ''
   form.shikimori_score = null
+  form.current_episode = 0
   newLinks.value    = []
   newGenreName.value = ''
   posterLoadError.value = false
   showAnimeSearch.value = false
 }
 
+
+async function incrementEpisode(rev) {
+  if (rev.current_episode >= rev.episodes_total) return
+  const newEpisode = (rev.current_episode || 0) + 1
+  
+  const payload = {
+    title: rev.title,
+    content_type: rev.content_type,
+    status: newEpisode === rev.episodes_total ? 'completed' : rev.status,
+    rating: rev.rating,
+    notes: rev.notes,
+    poster_url: rev.poster_url,
+    shikimori_id: rev.shikimori_id,
+    description: rev.description,
+    episodes_total: rev.episodes_total,
+    current_episode: newEpisode,
+    aniliberty_alias: rev.aniliberty_alias,
+    shikimori_score: rev.shikimori_score
+  }
+  
+  await store.updateReview(rev.id, payload)
+}
+
 function openCreate() {
+  showAnimeSearch.value = true
+
   isEditing.value    = false
   editingReview.value = null
   resetForm()
@@ -683,7 +719,8 @@ function openEdit(rev) {
   form.description    = rev.description || ''
   form.episodes_total = rev.episodes_total || null
   form.aniliberty_alias = rev.aniliberty_alias || ''
-  form.shikimori_score = rev.shikimori_score || null
+  form.shikimori_score = rev.shikimori_score
+  form.current_episode = rev.current_episode || 0 || null
   newLinks.value      = []
   newGenreName.value = ''
   posterLoadError.value = false
@@ -696,6 +733,7 @@ function handleAnimeSelect(anime) {
   form.poster_url = anime.posterFull || anime.poster
   form.shikimori_id = anime.id
   form.shikimori_score = anime.score
+  form.current_episode = anime.episodes || 0
   
   if (anime.details) {
     form.description = anime.details.description || ''
@@ -1418,6 +1456,33 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   .type-selector { flex-direction: column; }
   .new-link-row { grid-template-columns: 1fr; }
 }
+
+.modern-pills {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+  padding: 4px;
+}
+.pill-btn {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.pill-btn:hover {
+  color: var(--text-main);
+}
+.pill-btn.active {
+  background: var(--primary-color, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
 </style>
 
 <style scoped>
@@ -1464,4 +1529,31 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .shiki-half {
   background: linear-gradient(135deg, white 50%, transparent 50%);
 }
+
+.modern-pills {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+  padding: 4px;
+}
+.pill-btn {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.pill-btn:hover {
+  color: var(--text-main);
+}
+.pill-btn.active {
+  background: var(--primary-color, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
 </style>

@@ -45,12 +45,12 @@ func (r *postgresReviewRepository) Create(ctx context.Context, userID int64, req
 	var rating *int16
 
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO reviews (user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		RETURNING id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
-	`, userID, req.Title, req.ContentType, req.Status, req.Rating, req.Notes, req.PosterURL, req.ShikimoriID, req.Description, req.EpisodesTotal, req.AnilibertyAlias, req.ShikimoriScore, now, now).
+		INSERT INTO reviews (user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, current_episode, aniliberty_alias, shikimori_score, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		RETURNING id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, current_episode, aniliberty_alias, shikimori_score, created_at, updated_at
+	`, userID, req.Title, req.ContentType, req.Status, req.Rating, req.Notes, req.PosterURL, req.ShikimoriID, req.Description, req.EpisodesTotal, req.CurrentEpisode, req.AnilibertyAlias, req.ShikimoriScore, now, now).
 		Scan(&review.ID, &review.UserID, &review.Title, &review.ContentType, &review.Status,
-			&rating, &review.Notes, &review.PosterURL, &review.ShikimoriID, &review.Description, &review.EpisodesTotal, &review.AnilibertyAlias, &review.ShikimoriScore, &review.CreatedAt, &review.UpdatedAt)
+			&rating, &review.Notes, &review.PosterURL, &review.ShikimoriID, &review.Description, &review.EpisodesTotal, &review.CurrentEpisode, &review.AnilibertyAlias, &review.ShikimoriScore, &review.CreatedAt, &review.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (r *postgresReviewRepository) Create(ctx context.Context, userID int64, req
 // Ссылки загружаются одним дополнительным запросом (IN clause), не N+1.
 func (r *postgresReviewRepository) GetAllByUserID(ctx context.Context, userID int64) ([]*model.Review, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
+		SELECT id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, current_episode, aniliberty_alias, shikimori_score, created_at, updated_at
 		FROM reviews WHERE user_id = $1 ORDER BY updated_at DESC
 	`, userID)
 	if err != nil {
@@ -79,7 +79,7 @@ func (r *postgresReviewRepository) GetAllByUserID(ctx context.Context, userID in
 		rev := &model.Review{Links: []model.ReviewLink{}, Genres: []model.ReviewGenre{}}
 		var rating *int16
 		if err := rows.Scan(&rev.ID, &rev.UserID, &rev.Title, &rev.ContentType, &rev.Status,
-			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt); err != nil {
+			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.CurrentEpisode, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt); err != nil {
 			return nil, err
 		}
 		rev.Rating = rating
@@ -145,11 +145,11 @@ func (r *postgresReviewRepository) GetByID(ctx context.Context, id, userID int64
 	rev := &model.Review{Links: []model.ReviewLink{}, Genres: []model.ReviewGenre{}}
 	var rating *int16
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
+		SELECT id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, current_episode, aniliberty_alias, shikimori_score, created_at, updated_at
 		FROM reviews WHERE id = $1 AND user_id = $2
 	`, id, userID).
 		Scan(&rev.ID, &rev.UserID, &rev.Title, &rev.ContentType, &rev.Status,
-			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt)
+			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.CurrentEpisode, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrReviewNotFound
@@ -181,13 +181,13 @@ func (r *postgresReviewRepository) Update(ctx context.Context, id, userID int64,
 	err := r.db.QueryRow(ctx, `
 		UPDATE reviews
 		SET title = $1, content_type = $2, status = $3, rating = $4, notes = $5, poster_url = $6,
-		    shikimori_id = $7, description = $8, episodes_total = $9, aniliberty_alias = $10, shikimori_score = $11, updated_at = $12
-		WHERE id = $13 AND user_id = $14
-		RETURNING id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, aniliberty_alias, shikimori_score, created_at, updated_at
+		    shikimori_id = $7, description = $8, episodes_total = $9, current_episode = $10, aniliberty_alias = $11, shikimori_score = $12, updated_at = $13
+		WHERE id = $14 AND user_id = $15
+		RETURNING id, user_id, title, content_type, status, rating, notes, poster_url, shikimori_id, description, episodes_total, current_episode, aniliberty_alias, shikimori_score, created_at, updated_at
 	`, req.Title, req.ContentType, req.Status, req.Rating, req.Notes, req.PosterURL,
-		req.ShikimoriID, req.Description, req.EpisodesTotal, req.AnilibertyAlias, req.ShikimoriScore, now, id, userID).
+		req.ShikimoriID, req.Description, req.EpisodesTotal, req.CurrentEpisode, req.AnilibertyAlias, req.ShikimoriScore, now, id, userID).
 		Scan(&rev.ID, &rev.UserID, &rev.Title, &rev.ContentType, &rev.Status,
-			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt)
+			&rating, &rev.Notes, &rev.PosterURL, &rev.ShikimoriID, &rev.Description, &rev.EpisodesTotal, &rev.CurrentEpisode, &rev.AnilibertyAlias, &rev.ShikimoriScore, &rev.CreatedAt, &rev.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrReviewNotFound

@@ -538,7 +538,7 @@
 
           <div class="flex gap-3 justify-end mt-6">
             <button class="btn btn-ghost" @click="closeItemModal">Отмена</button>
-            <button class="btn btn-primary" :disabled="!itemForm.title" @click="saveItem">Сохранить</button>
+            <button class="btn btn-primary" :disabled="!itemForm.title || isSaving" @click="saveItem">{{ isSaving ? \'Сохранение...\' : \'Сохранить\' }}</button>
           </div>
           </template>
         </div>
@@ -660,6 +660,7 @@ function getActiveRoomForItem(item) {
 const showInvitesModal = ref(false)
 const showCreateGroupModal = ref(false)
 const showItemModal = ref(false)
+const isSaving = ref(false)
 const showDeleteConfirm = ref(false)
 const showDeleteGroupConfirm = ref(false)
 const showLeaveConfirm = ref(false)
@@ -963,7 +964,8 @@ watch(() => itemForm.content_type, (newType) => {
 })
 
 async function saveItem() {
-  if (!itemForm.title || !activeGroup.value) return
+  if (!itemForm.title || !activeGroup.value || isSaving.value) return
+  isSaving.value = true
   
   const genres = itemForm.genresString
     ? itemForm.genresString.split(',').map(s => s.trim()).filter(Boolean)
@@ -996,6 +998,8 @@ async function saveItem() {
     closeItemModal()
   } catch (err) {
     console.error(err)
+  } finally {
+    isSaving.value = false
   }
 }
 

@@ -47,6 +47,7 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shikimori_id INTEGER;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS episodes_total INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS current_episode INTEGER NOT NULL DEFAULT 0;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS aniliberty_alias TEXT NOT NULL DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shikimori_score NUMERIC(4,2);`)
 

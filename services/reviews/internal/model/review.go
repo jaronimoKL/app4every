@@ -55,6 +55,7 @@ type Review struct {
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	CurrentEpisode  int          `json:"current_episode"`
 	AnilibertyAlias string       `json:"aniliberty_alias"`
 	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 	Links           []ReviewLink `json:"links"`
@@ -75,6 +76,7 @@ type CreateReviewRequest struct {
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	CurrentEpisode  int          `json:"current_episode"`
 	AnilibertyAlias string       `json:"aniliberty_alias"`
 	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }
@@ -89,6 +91,7 @@ type UpdateReviewRequest struct {
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
+	CurrentEpisode  int          `json:"current_episode"`
 	AnilibertyAlias string       `json:"aniliberty_alias"`
 	ShikimoriScore  *float64     `json:"shikimori_score,omitempty"`
 }

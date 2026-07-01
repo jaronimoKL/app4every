@@ -128,7 +128,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 		rates := gqlResp.Data.UserRates
 		allRates = append(allRates, rates...)
 
-		if len(rates) < limit {
+		if len(rates) == 0 {
 			break
 		}
 		page++
@@ -205,6 +205,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 				PosterURL:      poster,
 				ShikimoriID:    &shikiID,
 				EpisodesTotal:  epsTotal,
+				CurrentEpisode: rate.Episodes,
 				ShikimoriScore: &score,
 			}
 			rev, err := s.repo.Create(ctx, userID, req)
@@ -220,14 +221,15 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 				Title:          existing.Title,
 				ContentType:    existing.ContentType,
 				Status:         status,
-				Rating:         rating,
+				Rating:         existing.Rating,
+				Notes:          existing.Notes,
 				PosterURL:      existing.PosterURL,
 				ShikimoriID:    existing.ShikimoriID,
-				EpisodesTotal:  existing.EpisodesTotal,
+				Description:    existing.Description,
+				EpisodesTotal:  epsTotal,
+				CurrentEpisode: rate.Episodes,
 				AnilibertyAlias: existing.AnilibertyAlias,
 				ShikimoriScore: &score,
-				Description:    existing.Description,
-				Notes:          existing.Notes,
 			}
 			_, err := s.repo.Update(ctx, revID, userID, req)
 			if err != nil {

@@ -240,6 +240,22 @@
           <button @click="updateUrl" class="btn-change">Сменить видео</button>
         </div>
 
+        
+        <!-- Инфо для Theater Mode -->
+        <div class="theater-media-info glass animate-fade-in mt-4 p-4 flex gap-4" v-if="isTheaterMode && hasAnimeMetadata && !isLoadingShikimoriDetails">
+          <img v-if="shikimoriDetails?.image?.original" :src="'https://shikimori.one' + shikimoriDetails.image.original" class="w-[120px] rounded-md shadow-lg flex-shrink-0" style="align-self: flex-start;">
+          <div v-else class="w-[120px] h-[160px] rounded-md bg-white/5 flex items-center justify-center text-2xl flex-shrink-0">📺</div>
+          <div class="flex-1 min-w-0">
+            <h2 class="text-xl font-bold mb-1">{{ metadataTitle }}</h2>
+            <div class="text-sm text-gray-400 mb-3">{{ metadataTitleEn }}</div>
+            <div class="flex flex-wrap gap-1 mb-3">
+              <span class="badge bg-violet-500/20 text-violet-300 text-xs px-2 py-0.5 rounded">{{ shikimoriDetails?.kind?.toUpperCase() }}</span>
+              <span class="badge bg-green-500/20 text-green-300 text-xs px-2 py-0.5 rounded">★ {{ shikimoriDetails?.score }}</span>
+              <span v-if="shikimoriDetails?.episodes" class="badge bg-gray-500/20 text-gray-300 text-xs px-2 py-0.5 rounded">{{ shikimoriDetails?.episodes }} эп.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Информация о медиа (Только описание и персонажи) -->
         <div class="media-info-panel glass animate-fade-in mt-4" v-if="hasAnimeMetadata">
           <div v-if="isLoadingShikimoriDetails" class="loading-state">
@@ -333,6 +349,45 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
+
+
+// Import stores for progress sync
+import { useReviewsStore } from '@/stores/reviews'
+
+const reviewsStore = useReviewsStore()
+
+
+async function syncProgressWithList(episodeNum) {
+  if (!shikimoriDetails.value || !authStore.isAuthenticated) return
+  const shikiId = shikimoriDetails.value.id
+  
+  // Try to find in personal reviews
+  if (reviewsStore.reviews.length === 0) {
+    await reviewsStore.fetchReviews()
+  }
+  const review = reviewsStore.reviews.find(r => r.shikimori_id === shikiId)
+  if (review && review.current_episode < episodeNum) {
+    console.log(`Syncing progress to ${episodeNum} for review ${review.id}`)
+    const payload = {
+      title: review.title,
+      content_type: review.content_type,
+      status: review.status,
+      rating: review.rating,
+      notes: review.notes,
+      poster_url: review.poster_url,
+      shikimori_id: review.shikimori_id,
+      description: review.description,
+      episodes_total: review.episodes_total,
+      current_episode: episodeNum,
+      aniliberty_alias: review.aniliberty_alias,
+      shikimori_score: review.shikimori_score
+    }
+    await reviewsStore.updateReview(review.id, payload)
+  }
+}
+
+
 import { useReviewsStore } from '@/stores/reviews'
 import { useGroupsStore } from '@/stores/groups'
 import { useWatchParty } from '@/composables/useWatchParty'
@@ -1682,7 +1737,8 @@ h3 {
 }
 .room-content.theater-mode .player-wrapper {
   flex: none;
-  height: 80vh;
+  height: 75vh;
+  max-height: calc(100vh - 120px);
   min-height: unset;
 }
 .room-content.theater-mode .side-panel {
@@ -1697,11 +1753,7 @@ h3 {
   min-width: 300px;
 }
 .room-content.theater-mode .sidebar-media-info {
-  flex: 1;
-  min-width: 300px;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 16px;
+  display: none !important;
 }
 .room-content.theater-mode .sidebar-media-poster {
   width: 120px;
