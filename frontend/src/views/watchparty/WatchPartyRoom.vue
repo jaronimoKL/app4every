@@ -348,8 +348,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-const authStore = useAuthStore()
 
 
 // Import stores for progress sync
@@ -359,7 +357,7 @@ const reviewsStore = useReviewsStore()
 
 
 async function syncProgressWithList(episodeNum) {
-  if (!shikimoriDetails.value || !authStore.isAuthenticated) return
+  if (!shikimoriDetails.value || !auth.isAuthenticated) return
   const shikiId = shikimoriDetails.value.id
   
   // Try to find in personal reviews
@@ -391,6 +389,7 @@ async function syncProgressWithList(episodeNum) {
 import { useReviewsStore } from '@/stores/reviews'
 import { useGroupsStore } from '@/stores/groups'
 import { useWatchParty } from '@/composables/useWatchParty'
+import { useAuthStore } from '@/stores/auth'
 import YouTubePlayer from '@/components/watchparty/YouTubePlayer.vue'
 import DirectVideoPlayer from '@/components/watchparty/DirectVideoPlayer.vue'
 import RutubePlayer from '@/components/watchparty/RutubePlayer.vue'
