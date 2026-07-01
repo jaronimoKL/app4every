@@ -538,7 +538,7 @@
 
           <div class="flex gap-3 justify-end mt-6">
             <button class="btn btn-ghost" @click="closeItemModal">Отмена</button>
-            <button class="btn btn-primary" :disabled="!itemForm.title || isSaving" @click="saveItem">{{ isSaving ? \'Сохранение...\' : \'Сохранить\' }}</button>
+            <button class="btn btn-primary" :disabled="!itemForm.title || isSaving" @click="saveItem">{{ isSaving ? 'Сохранение...' : 'Сохранить' }}</button>
           </div>
           </template>
         </div>
