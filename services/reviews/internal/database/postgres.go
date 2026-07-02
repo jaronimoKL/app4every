@@ -45,6 +45,7 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 
 	// Миграции для новых полей Anime
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shikimori_id INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS tmdb_id INTEGER;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS episodes_total INTEGER;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS current_episode INTEGER NOT NULL DEFAULT 0;`)
@@ -168,6 +169,7 @@ func NewPostgresPool(cfg *config.Config) (*pgxpool.Pool, error) {
 
 	// Миграции для новых полей Anime в группах
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS shikimori_id INTEGER;`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS tmdb_id INTEGER;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS episodes_total INTEGER;`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE group_items ADD COLUMN IF NOT EXISTS aniliberty_alias TEXT NOT NULL DEFAULT '';`)

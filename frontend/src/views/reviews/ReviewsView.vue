@@ -274,6 +274,11 @@
             @select="handleAnimeSelect"
             @skip="showAnimeSearch = false"
           />
+          <MovieSearchStep
+            v-else-if="showMovieSearch"
+            @select="handleMovieSelect"
+            @skip="showMovieSearch = false"
+          />
           <template v-else>
 
           <!-- Тип контента -->
@@ -290,10 +295,15 @@
             </div>
           </div>
 
-          <!-- Кнопка поиска для аниме (только при создании) -->
+          <!-- Кнопка поиска для контента (только при создании) -->
           <div v-if="form.content_type === 'anime' && !isEditing" class="mb-4">
             <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
               🔍 Найти на Shikimori (Автозаполнение)
+            </button>
+          </div>
+          <div v-if="(form.content_type === 'movie' || form.content_type === 'series') && !isEditing" class="mb-4">
+            <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
+              🔍 Найти на TMDB (Автозаполнение)
             </button>
           </div>
 
@@ -482,6 +492,7 @@ import { useReviewsStore } from '@/stores/reviews'
 import { useGroupsStore } from '@/stores/groups'
 import { useAuthStore } from '@/stores/auth'
 import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
+import MovieSearchStep from '@/components/reviews/MovieSearchStep.vue'
 import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
 
 const router = useRouter()
@@ -673,6 +684,7 @@ const posterLoadError = ref(false)
 const newLinks        = ref([])  // новые ссылки для добавления
 const newGenreName    = ref('')  // имя нового жанра в инпуте
 const showAnimeSearch = ref(false)
+const showMovieSearch = ref(false)
 const isSaving = ref(false)
 
 const defaultGenres = {
@@ -720,6 +732,7 @@ function resetForm() {
   newGenreName.value = ''
   posterLoadError.value = false
   showAnimeSearch.value = false
+  showMovieSearch.value = false
 }
 
 
@@ -746,7 +759,8 @@ async function incrementEpisode(rev) {
 }
 
 function openCreate() {
-  showAnimeSearch.value = true
+  showAnimeSearch.value = false
+  showMovieSearch.value = false
 
   isEditing.value    = false
   editingReview.value = null
@@ -775,6 +789,7 @@ function openEdit(rev) {
   newGenreName.value = ''
   posterLoadError.value = false
   showAnimeSearch.value = false
+  showMovieSearch.value = false
   showModal.value = true
 }
 
@@ -802,6 +817,34 @@ function handleAnimeSelect(anime) {
   }
 
   showAnimeSearch.value = false
+}
+
+function handleMovieSelect(item) {
+  form.title = item.title
+  form.description = item.overview || ''
+  
+  if (item.poster_url) {
+    form.poster_url = item.poster_url
+  }
+  
+  form.tmdb_id = item.id
+  form.rating = item.vote_average ? Math.round(item.vote_average) : null
+
+  if (item.media_type === 'movie') {
+    form.content_type = 'movie'
+    form.episodes_total = 1
+  } else if (item.media_type === 'tv') {
+    form.content_type = 'series'
+    if (item.details && item.details.number_of_episodes) {
+      form.episodes_total = item.details.number_of_episodes
+    }
+  }
+
+  if (item.details && item.details.genres && item.details.genres.length > 0) {
+    form.genres = item.details.genres.map(g => g.name)
+  }
+
+  showMovieSearch.value = false
 }
 
 function closeModal() {

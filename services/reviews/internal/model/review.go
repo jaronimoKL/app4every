@@ -53,6 +53,7 @@ type Review struct {
 	Notes           string       `json:"notes"`
 	PosterURL       string       `json:"poster_url"` // URL постера (необязателен)
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	TmdbID          *int         `json:"tmdb_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
 	CurrentEpisode  int          `json:"current_episode"`
@@ -74,6 +75,7 @@ type CreateReviewRequest struct {
 	Notes           string       `json:"notes"`
 	PosterURL       string       `json:"poster_url"`
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	TmdbID          *int         `json:"tmdb_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
 	CurrentEpisode  int          `json:"current_episode"`
@@ -89,6 +91,7 @@ type UpdateReviewRequest struct {
 	Notes           string       `json:"notes"`
 	PosterURL       string       `json:"poster_url"`
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	TmdbID          *int         `json:"tmdb_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
 	CurrentEpisode  int          `json:"current_episode"`

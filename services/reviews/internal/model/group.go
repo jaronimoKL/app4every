@@ -48,6 +48,7 @@ type GroupItem struct {
 	PosterURL       string            `json:"poster_url"`
 	Genres          []string          `json:"genres"` // массив строк (TEXT[])
 	ShikimoriID     *int              `json:"shikimori_id,omitempty"`
+	TmdbID          *int              `json:"tmdb_id,omitempty"`
 	Description     string            `json:"description"`
 	EpisodesTotal   *int              `json:"episodes_total,omitempty"`
 	AnilibertyAlias string            `json:"aniliberty_alias"`
@@ -107,6 +108,7 @@ type CreateGroupItemRequest struct {
 	PosterURL       string       `json:"poster_url"`
 	Genres          []string     `json:"genres"`
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	TmdbID          *int         `json:"tmdb_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
 	AnilibertyAlias string       `json:"aniliberty_alias"`
@@ -123,6 +125,7 @@ type UpdateGroupItemRequest struct {
 	PosterURL       string       `json:"poster_url"`
 	Genres          []string     `json:"genres"`
 	ShikimoriID     *int         `json:"shikimori_id,omitempty"`
+	TmdbID          *int         `json:"tmdb_id,omitempty"`
 	Description     string       `json:"description"`
 	EpisodesTotal   *int         `json:"episodes_total,omitempty"`
 	AnilibertyAlias string       `json:"aniliberty_alias"`

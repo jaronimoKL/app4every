@@ -166,6 +166,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: app4every_frontend
     restart: unless-stopped
+    environment:
+      - VITE_TMDB_API_KEY=${VITE_TMDB_API_KEY}
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules

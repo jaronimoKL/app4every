@@ -467,6 +467,11 @@
             @select="handleAnimeSelect"
             @skip="showAnimeSearch = false"
           />
+          <MovieSearchStep
+            v-else-if="showMovieSearch"
+            @select="handleMovieSelect"
+            @skip="showMovieSearch = false"
+          />
           <template v-else>
           <!-- Тип контента -->
           <div class="form-group">
@@ -486,6 +491,11 @@
           <div v-if="itemForm.content_type === 'anime' && !isEditingItem" class="mt-4 mb-2">
             <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
               🔍 Найти на Shikimori (Автозаполнение)
+            </button>
+          </div>
+          <div v-if="(itemForm.content_type === 'movie' || itemForm.content_type === 'series') && !isEditingItem" class="mt-4 mb-2">
+            <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
+              🔍 Найти на TMDB (Автозаполнение)
             </button>
           </div>
 
@@ -606,6 +616,7 @@ import { useGroupsStore } from '@/stores/groups'
 import { useAuthStore } from '@/stores/auth'
 import { friendsApi, watchpartyApi } from '@/services/api'
 import AnimeSearchStep from '@/components/reviews/AnimeSearchStep.vue'
+import MovieSearchStep from '@/components/reviews/MovieSearchStep.vue'
 import EpisodePickerModal from '@/components/reviews/EpisodePickerModal.vue'
 import { useRouter } from 'vue-router'
 
@@ -665,6 +676,7 @@ const showDeleteConfirm = ref(false)
 const showDeleteGroupConfirm = ref(false)
 const showLeaveConfirm = ref(false)
 const showAnimeSearch = ref(false)
+const showMovieSearch = ref(false)
 
 // Формы
 const groupForm = reactive({
@@ -902,6 +914,7 @@ function openCreateItem() {
   itemForm.aniliberty_alias = ''
   itemForm.shikimori_score = null
   showAnimeSearch.value = false
+  showMovieSearch.value = false
   showItemModal.value = true
 }
 
@@ -922,6 +935,7 @@ function openEditItem(item) {
   itemForm.aniliberty_alias = item.aniliberty_alias || ''
   itemForm.shikimori_score = item.shikimori_score || null
   showAnimeSearch.value = false
+  showMovieSearch.value = false
   showItemModal.value = true
 }
 
@@ -949,6 +963,36 @@ function handleAnimeSelect(anime) {
   }
 
   showAnimeSearch.value = false
+}
+
+function handleMovieSelect(item) {
+  itemForm.title = item.title
+  itemForm.description = item.overview || ''
+  
+  if (item.poster_url) {
+    itemForm.poster_url = item.poster_url
+  }
+  
+  itemForm.tmdb_id = item.id
+  itemForm.rating = item.vote_average ? Math.round(item.vote_average) : null
+
+  if (item.media_type === 'movie') {
+    itemForm.content_type = 'movie'
+    itemForm.episodes_total = 1
+    itemForm.max_episodes = 1
+  } else if (item.media_type === 'tv') {
+    itemForm.content_type = 'series'
+    if (item.details && item.details.number_of_episodes) {
+      itemForm.episodes_total = item.details.number_of_episodes
+      itemForm.max_episodes = item.details.number_of_episodes
+    }
+  }
+
+  if (item.details && item.details.genres && item.details.genres.length > 0) {
+    itemForm.genres = item.details.genres.map(g => g.name)
+  }
+
+  showMovieSearch.value = false
 }
 
 function closeItemModal() {
