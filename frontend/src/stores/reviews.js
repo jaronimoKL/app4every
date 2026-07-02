@@ -22,28 +22,40 @@ export const useReviewsStore = defineStore('reviews', () => {
   const reviews = ref([])
   const loading = ref(false)
   const saving  = ref(false)
+  const syncing = ref(false)
+  const syncProgress = ref(0)
 
   function token() { return useAuthStore().accessToken }
 
   // ── CRUD рецензий ──
 
-  async function fetchReviews() {
-    loading.value = true
+  async function fetchReviews(background = false) {
+    if (!background) loading.value = true
     try {
       let localReviews = await api('GET', '/reviews', null, token())
       reviews.value = localReviews || []
     } finally {
-      loading.value = false
+      if (!background) loading.value = false
     }
   }
 
   async function syncWithShikimori() {
-    loading.value = true
+    syncing.value = true
+    syncProgress.value = 0
+    let interval = setInterval(() => {
+      if (syncProgress.value < 90) syncProgress.value += Math.random() * 5 + 2
+    }, 500)
+
     try {
       await api('POST', '/reviews/sync-shikimori', null, token())
-      await fetchReviews()
+      syncProgress.value = 100
+      await fetchReviews(true)
     } finally {
-      loading.value = false
+      clearInterval(interval)
+      setTimeout(() => {
+        syncing.value = false
+        syncProgress.value = 0
+      }, 500)
     }
   }
 

@@ -19,10 +19,11 @@
           </RouterLink>
         </div>
         <div class="flex items-center gap-3">
-          <button v-if="auth.user?.shikimori_user_id" class="btn btn-outline" style="padding:7px 12px;font-size:13px;" @click="syncWithShikimori">
-            <span v-if="store.loading" class="spinner" style="width:14px;height:14px;margin-right:6px;"></span>
+          <button v-if="auth.user?.shikimori_user_id" class="btn btn-outline btn-sync" :class="{ 'is-syncing': store.syncing }" style="padding:7px 12px;font-size:13px;" @click="syncWithShikimori">
+            <span v-if="store.syncing" class="spinner" style="width:14px;height:14px;margin-right:6px;"></span>
             <span v-else style="margin-right:4px;">🔄</span>
             Синхронизировать
+            <div v-if="store.syncing || store.syncProgress > 0" class="sync-progress" :style="{ width: store.syncProgress + '%' }"></div>
           </button>
           <button class="add-btn" @click="openCreate">
             <span>＋</span> Добавить
@@ -1560,4 +1561,25 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
+</style>
+
+<style scoped>
+.btn-sync {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.btn-sync.is-syncing {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.05);
+}
+.sync-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #3b82f6; /* primary color */
+  transition: width 0.4s ease-out;
+  border-radius: 0 2px 0 0;
+}
 </style>
