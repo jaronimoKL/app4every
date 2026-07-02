@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -120,6 +121,17 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 			return fmt.Errorf("shikimori graphql error at page %d: %w", page, err)
 		}
 
+		if sResp.StatusCode == http.StatusTooManyRequests {
+			sResp.Body.Close()
+			time.Sleep(2 * time.Second)
+			continue // retry the same page
+		}
+		if sResp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(sResp.Body)
+			sResp.Body.Close()
+			return fmt.Errorf("shikimori returned status %d at page %d: %s", sResp.StatusCode, page, string(body))
+		}
+
 		var gqlResp ShikimoriGraphQLResponse
 		err = json.NewDecoder(sResp.Body).Decode(&gqlResp)
 		sResp.Body.Close()
@@ -139,6 +151,9 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 			break
 		}
 		page++
+		
+		// Rate limiting: max 5 requests per second, so we sleep 250ms
+		time.Sleep(250 * time.Millisecond)
 	}
 
 	// 3. Fetch user's existing reviews
