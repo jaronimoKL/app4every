@@ -160,7 +160,19 @@
           @click="openEdit(rev)"
         >
           <!-- Постер или заглушка -->
-          <div class="card-poster" :style="posterStyle(rev)">
+          <div class="card-poster" :style="!rev.poster_url ? { background: posterGradients[rev.content_type] || posterGradients.movie } : {}">
+            <div v-if="rev.poster_url && !loadedImages[rev.id]" class="poster-skeleton">
+              <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
+            </div>
+            <img 
+              v-if="rev.poster_url" 
+              :src="rev.poster_url" 
+              class="poster-img"
+              :class="{ 'img-loaded': loadedImages[rev.id] }"
+              @load="loadedImages[rev.id] = true"
+              @error="loadedImages[rev.id] = true"
+              loading="lazy"
+            />
             <div class="card-poster-overlay"></div>
             <!-- Бейдж типа -->
             <div class="card-type-badge" :style="{ background: typeColor(rev.content_type) }">
@@ -241,7 +253,9 @@
         </div>
       </div>
       <!-- Триггер для подгрузки элементов при скролле -->
-      <div ref="loadMoreTrigger" style="height: 20px; width: 100%;"></div>
+      <div ref="loadMoreTrigger" class="flex justify-center py-6" style="width: 100%;">
+        <div v-if="isLoadingMore" class="spinner" style="width:32px;height:32px;"></div>
+      </div>
     </div>
 
     <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
@@ -483,11 +497,28 @@ async function syncWithShikimori() {
   }
 }
 
+const loadedImages = ref({})
+const isLoadingMore = ref(false)
+
 // Observer и пагинация будут настроены ниже, после инициализации currentReviews
 
 onMounted(async () => {
   await store.fetchReviews()
   await groupsStore.fetchInvites()
+  
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !isLoadingMore.value && visibleLimit.value < currentReviews.value.length) {
+      isLoadingMore.value = true
+      setTimeout(() => {
+        visibleLimit.value += 24
+        isLoadingMore.value = false
+      }, 500) // небольшая задержка для плавности пагинации
+    }
+  }, { rootMargin: '150px' })
+  
+  if (loadMoreTrigger.value) {
+    observer.observe(loadMoreTrigger.value)
+  }
 })
 
 // ── Конфигурация ──
@@ -883,6 +914,7 @@ function handleDelete() {
 }
 
 async function confirmDelete() {
+
   if (!editingReview.value) return
   isDeleting.value = true
   try {
@@ -938,13 +970,6 @@ const posterGradients = {
 }
 
 function posterStyle(rev) {
-  if (rev.poster_url) {
-    return {
-      backgroundImage: `url(${rev.poster_url})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }
-  }
   return { background: posterGradients[rev.content_type] || posterGradients.movie }
 }
 
@@ -1118,13 +1143,34 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 /* Постер */
 .card-poster {
+  width: 100%;
+  padding-bottom: 145%; /* соотношение ~2:3 */
   position: relative;
-  height: 260px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
+
+.poster-img {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.poster-img.img-loaded {
+  opacity: 1;
+}
+.poster-skeleton {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(255,255,255,0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .card-poster-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
