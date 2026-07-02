@@ -154,7 +154,7 @@
       <!-- Сетка карточек -->
       <div v-else class="card-grid">
         <div
-          v-for="rev in currentReviews"
+          v-for="rev in currentReviews.slice(0, visibleLimit)"
           :key="rev.id"
           class="rv-card"
           @click="openEdit(rev)"
@@ -186,12 +186,12 @@
             <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold" v-if="rev.episodes_total && rev.content_type !== 'movie'">
               <span>🎬</span> Серия: {{ rev.current_episode || 0 }} из {{ rev.episodes_total }}
               <button 
-                class="btn btn-ghost !p-1 ml-auto hover:text-white"
+                class="btn-increment-ep ml-auto"
                 v-if="(rev.current_episode || 0) < rev.episodes_total" 
                 @click.stop="incrementEpisode(rev)"
                 title="Отметить следующую серию просмотренной"
               >
-                <span class="text-lg leading-none">+1</span>
+                ＋1
               </button>
             </div>
             
@@ -240,6 +240,8 @@
           </div>
         </div>
       </div>
+      <!-- Триггер для подгрузки элементов при скролле -->
+      <div ref="loadMoreTrigger" style="height: 20px; width: 100%;"></div>
     </div>
 
     <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
@@ -327,6 +329,16 @@
             <div v-if="form.poster_url" class="poster-preview">
               <img :src="form.poster_url" alt="Постер" @error="posterLoadError = true" @load="posterLoadError = false" />
               <span v-if="posterLoadError" class="poster-error">❌ Не удалось загрузить изображение</span>
+            </div>
+          </div>
+
+          <!-- Прогресс просмотра (серии) -->
+          <div class="form-group" v-if="form.content_type !== 'movie'">
+            <label class="form-label">Прогресс серий</label>
+            <div class="flex items-center gap-2">
+              <input v-model.number="form.current_episode" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Текущая" />
+              <span class="text-gray-400">из</span>
+              <input v-model.number="form.episodes_total" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Всего" />
             </div>
           </div>
 
@@ -472,9 +484,33 @@ async function syncWithShikimori() {
 }
 
 // ── Инициализация ──
+
+const visibleLimit = ref(30)
+const loadMoreTrigger = ref(null)
+
+watch(currentReviews, () => {
+  visibleLimit.value = 30
+})
+
+let observer = null
+
 onMounted(async () => {
   await store.fetchReviews()
   await groupsStore.fetchInvites()
+  
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && visibleLimit.value < currentReviews.value.length) {
+      visibleLimit.value += 24
+    }
+  }, { rootMargin: '200px' })
+  
+  if (loadMoreTrigger.value) {
+    observer.observe(loadMoreTrigger.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
 })
 
 // ── Конфигурация ──
@@ -629,6 +665,7 @@ const posterLoadError = ref(false)
 const newLinks        = ref([])  // новые ссылки для добавления
 const newGenreName    = ref('')  // имя нового жанра в инпуте
 const showAnimeSearch = ref(false)
+const isSaving = ref(false)
 
 const defaultGenres = {
   movie: ['Боевик', 'Комедия', 'Драма', 'Триллер', 'Ужасы', 'Фантастика', 'Фэнтези', 'Мелодрама', 'Криминал', 'Приключения', 'Аниме-фильм', 'Документальный'],
@@ -814,12 +851,14 @@ async function handleSave() {
     shikimori_id:     form.shikimori_id || null,
     description:      form.description || '',
     episodes_total:   form.episodes_total || null,
+    current_episode:  form.current_episode || 0,
     aniliberty_alias: form.aniliberty_alias || '',
     shikimori_score:  form.shikimori_score || null
   }
 
   let savedReview
   try {
+    isSaving.value = true
     if (isEditing.value && !editingReview.value.isShikimoriOnly) {
       savedReview = await store.updateReview(editingReview.value.id, payload)
     } else {
@@ -855,6 +894,8 @@ async function handleSave() {
     closeModal()
   } catch (err) {
     console.error('Failed to save review', err)
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -991,6 +1032,30 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   display: flex;
   flex-direction: column;
   background: var(--bg-base);
+}
+
+.rv-body {
+  flex: 1;
+  padding: 24px;
+  background: var(--bg-body);
+}
+
+.btn-increment-ep {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.15s;
+}
+.btn-increment-ep:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 /* ══ Навбар ══ */
