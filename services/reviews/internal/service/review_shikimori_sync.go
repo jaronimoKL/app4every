@@ -87,7 +87,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 	limit := 50
 	for {
 		query := `query {
-			userRates(userId: %d, targetType: Anime, limit: %d, page: %d) {
+			userRates(userId: %d, limit: %d, page: %d) {
 				id
 				status
 				score
