@@ -12,6 +12,9 @@ import (
 )
 
 type ShikimoriGraphQLResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
 	Data struct {
 		UserRates []struct {
 			ID       string `json:"id"`
@@ -123,6 +126,10 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 
 		if err != nil {
 			return fmt.Errorf("failed to decode graphql at page %d: %w", page, err)
+		}
+
+		if len(gqlResp.Errors) > 0 {
+			return fmt.Errorf("shikimori graphql error: %s (возможно, токен устарел, перепривяжите аккаунт Shikimori)", gqlResp.Errors[0].Message)
 		}
 
 		rates := gqlResp.Data.UserRates

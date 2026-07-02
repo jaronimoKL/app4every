@@ -466,7 +466,7 @@ async function syncWithShikimori() {
   try {
     await store.syncWithShikimori()
   } catch (err) {
-    alert("Ошибка при синхронизации: " + (err.error || err.message || JSON.stringify(err)))
+    alert("Ошибка при синхронизации: " + (err.message || err.error || JSON.stringify(err)))
   }
 }
 
