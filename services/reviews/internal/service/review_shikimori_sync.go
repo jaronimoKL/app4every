@@ -111,6 +111,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 		sReq, _ := http.NewRequestWithContext(ctx, "POST", "https://shikimori.io/api/graphql", bytes.NewBuffer(bodyBytes))
 		sReq.Header.Set("Content-Type", "application/json")
 		sReq.Header.Set("User-Agent", "App4Every")
+		sReq.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 
 		sResp, err := client.Do(sReq)
 		if err != nil {
