@@ -483,34 +483,11 @@ async function syncWithShikimori() {
   }
 }
 
-// ── Инициализация ──
-
-const visibleLimit = ref(30)
-const loadMoreTrigger = ref(null)
-
-watch(currentReviews, () => {
-  visibleLimit.value = 30
-})
-
-let observer = null
+// Observer и пагинация будут настроены ниже, после инициализации currentReviews
 
 onMounted(async () => {
   await store.fetchReviews()
   await groupsStore.fetchInvites()
-  
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && visibleLimit.value < currentReviews.value.length) {
-      visibleLimit.value += 24
-    }
-  }, { rootMargin: '200px' })
-  
-  if (loadMoreTrigger.value) {
-    observer.observe(loadMoreTrigger.value)
-  }
-})
-
-onUnmounted(() => {
-  if (observer) observer.disconnect()
 })
 
 // ── Конфигурация ──
