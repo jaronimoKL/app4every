@@ -463,7 +463,11 @@ const groupsStore = useGroupsStore()
 const auth = useAuthStore()
 
 async function syncWithShikimori() {
-  await store.syncWithShikimori()
+  try {
+    await store.syncWithShikimori()
+  } catch (err) {
+    alert("Ошибка при синхронизации: " + (err.error || err.message || JSON.stringify(err)))
+  }
 }
 
 // ── Инициализация ──

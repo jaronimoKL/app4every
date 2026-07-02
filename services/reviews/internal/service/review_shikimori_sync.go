@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -211,8 +210,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 			}
 			rev, err := s.repo.Create(ctx, userID, req)
 			if err != nil {
-				log.Printf("failed to sync create review for %d: %v", shikiID, err)
-				continue
+				return fmt.Errorf("failed to create %s (shiki %d): %v", title, shikiID, err)
 			}
 			revID = rev.ID
 		} else {
@@ -234,7 +232,7 @@ func (s *reviewService) SyncShikimori(ctx context.Context, userID int64) error {
 			}
 			_, err := s.repo.Update(ctx, revID, userID, req)
 			if err != nil {
-				log.Printf("failed to sync update review for %d: %v", shikiID, err)
+				return fmt.Errorf("failed to update %s (shiki %d): %v", title, shikiID, err)
 			}
 		}
 
