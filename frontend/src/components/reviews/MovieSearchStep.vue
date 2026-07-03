@@ -24,9 +24,13 @@
       <div 
         v-for="item in tmdbResults" 
         :key="item.id"
-        class="anime-card glass glass-hover cursor-pointer flex gap-3 p-3 rounded-lg"
+        class="anime-card glass glass-hover cursor-pointer flex gap-3 p-3 rounded-lg relative"
+        :class="{ 'opacity-50 pointer-events-none': loadingItemId === item.id }"
         @click="selectItem(item)"
       >
+        <div v-if="loadingItemId === item.id" class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg z-10">
+          <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+        </div>
         <img v-if="item.poster_url" :src="item.poster_url" alt="poster" class="w-16 h-20 object-cover rounded-md flex-shrink-0" />
         <div v-else class="w-16 h-20 bg-gray-800 rounded-md flex-shrink-0 flex items-center justify-center text-xs text-gray-500">Нет фото</div>
         
@@ -62,6 +66,7 @@ import { useTmdbSearch } from '@/composables/useTmdbSearch'
 const emit = defineEmits(['select', 'skip'])
 const searchQuery = ref('')
 const hasSearched = ref(false)
+const loadingItemId = ref(null)
 
 const { tmdbResults, isSearching, searchTmdb, fetchTmdbDetails } = useTmdbSearch()
 
@@ -72,13 +77,24 @@ async function handleSearch() {
 }
 
 async function selectItem(item) {
-  // Запрашиваем детали для жанров и кол-ва серий
-  const details = await fetchTmdbDetails(item.id, item.media_type)
+  if (loadingItemId.value) return
+  loadingItemId.value = item.id
   
-  emit('select', {
-    ...item,
-    details
-  })
+  try {
+    console.log('Selecting item:', item)
+    // Запрашиваем детали для жанров и кол-ва серий
+    const details = await fetchTmdbDetails(item.id, item.media_type)
+    
+    emit('select', {
+      ...item,
+      details
+    })
+  } catch (err) {
+    console.error('Error selecting item:', err)
+    alert('Произошла ошибка при загрузке деталей фильма/сериала.')
+  } finally {
+    loadingItemId.value = null
+  }
 }
 </script>
 
