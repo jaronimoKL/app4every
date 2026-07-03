@@ -841,7 +841,7 @@ function handleMovieSelect(item) {
   }
 
   if (item.details && item.details.genres && item.details.genres.length > 0) {
-    form.genres = item.details.genres.map(g => g.name)
+    form.genres = item.details.genres.map(g => ({ name: g.name }))
   }
 
   showMovieSearch.value = false
