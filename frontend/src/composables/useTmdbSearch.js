@@ -60,10 +60,16 @@ export function useTmdbSearch() {
 
   async function fetchTmdbDetails(id, mediaType) {
     if (!TMDB_API_KEY) return null
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 seconds timeout
+    
     try {
       const url = `${TMDB_BASE_URL}/${mediaType}/${id}?api_key=${TMDB_API_KEY}&language=ru-RU`
       console.log('TMDB Details Request URL:', url.replace(TMDB_API_KEY, 'HIDDEN_KEY'))
-      const res = await fetch(url)
+      
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(timeoutId)
       
       if (!res.ok) {
         const errorText = await res.text()
@@ -73,8 +79,13 @@ export function useTmdbSearch() {
       }
       return await res.json()
     } catch (err) {
+      clearTimeout(timeoutId)
       console.error('Failed to fetch TMDB details:', err)
-      alert(`Сетевая ошибка при запросе деталей TMDB:\n${err.message}`)
+      if (err.name === 'AbortError') {
+        alert('Превышено время ожидания ответа от TMDB (таймаут 8 секунд).')
+      } else {
+        alert(`Сетевая ошибка при запросе деталей TMDB:\n${err.message}`)
+      }
       return null
     }
   }
