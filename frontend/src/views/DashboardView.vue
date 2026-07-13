@@ -1,139 +1,186 @@
 <template>
   <div class="dashboard-page">
-    <!-- ── Основной контент ── -->
     <main class="dashboard-main">
 
-      <!-- Приветствие -->
-      <section class="welcome-section">
-        <div class="orb" style="width:500px;height:500px;background:var(--caramel);top:-150px;right:-100px;opacity:0.06;"></div>
-        <div class="orb" style="width:300px;height:300px;background:var(--cinnamon);bottom:0;left:-50px;opacity:0.05;"></div>
-        <div class="dot-grid"></div>
-
-        <div class="welcome-content">
-          <div class="badge-chip badge-status-ok" style="margin-bottom:16px;">
-            <span class="badge-dot"></span>
-            Всё работает
-          </div>
-          <h1 class="welcome-title">
-            Привет,
-            <span class="gradient-text">{{ auth.user?.username || auth.user?.email?.split('@')[0] }}</span>
-            👋
-          </h1>
-          <p style="color:var(--text-secondary);font-size:16px;max-width:480px;line-height:1.6;">
-            Твоя приватная экосистема готова. Модули в разработке —
-            следи за обновлениями.
-          </p>
-        </div>
-      </section>
-
-      <!-- Карточки модулей -->
-      <section class="modules-section">
-        <h2 class="section-title">Модули</h2>
-        <div class="modules-grid">
-          <component
-            v-for="mod in modules"
-            :key="mod.name"
-            :is="mod.link ? 'RouterLink' : 'div'"
-            :to="mod.link || undefined"
-            class="module-card glass glass-hover"
-            style="text-decoration:none;"
-          >
-            <div class="module-icon" :style="{ background: mod.iconBg }">
-              {{ mod.icon }}
-            </div>
-            <div class="module-info">
-              <div class="module-name">{{ mod.name }}</div>
-              <div class="module-desc">{{ mod.desc }}</div>
-            </div>
-            <div class="module-footer">
-              <span v-if="mod.link" class="btn-open-cta">Открыть →</span>
-              <span v-else class="coming-soon">Скоро</span>
-              <div class="module-tech">
-                <span v-for="tag in mod.tech" :key="tag" class="tech-tag">{{ tag }}</span>
+      <!-- Сетка Дашборда -->
+      <div class="dashboard-grid">
+        
+        <!-- Левая колонка: Основной функционал -->
+        <div class="main-column">
+          <!-- Герой-приветствие -->
+          <section class="welcome-hero glass">
+            <div class="orb-blur" style="background: var(--caramel); top: -20%; right: -10%;"></div>
+            <div class="orb-blur" style="background: var(--cinnamon); bottom: -30%; left: -10%;"></div>
+            
+            <div class="welcome-content">
+              <div class="status-pill">
+                <span class="pulse-dot"></span>
+                <span>Система активна</span>
+              </div>
+              <h1 class="welcome-title">
+                Привет, <span class="gradient-text">{{ auth.user?.username || auth.user?.email?.split('@')[0] }}</span> 👋
+              </h1>
+              <p class="welcome-subtitle">
+                Добро пожаловать в персональную экосистему App4Every. Все модули изолированы и работают независимо друг от друга.
+              </p>
+              
+              <!-- Быстрая статистика -->
+              <div class="quick-stats-row">
+                <div class="stat-badge">
+                  <span class="stat-num">4</span>
+                  <span class="stat-label">модуля подключено</span>
+                </div>
+                <div class="stat-badge">
+                  <span class="stat-num">Go</span>
+                  <span class="stat-label">на бэкенде</span>
+                </div>
+                <div class="stat-badge">
+                  <span class="stat-num">DB</span>
+                  <span class="stat-label">PostgreSQL + Redis</span>
+                </div>
               </div>
             </div>
-          </component>
-        </div>
-      </section>
+          </section>
 
-      <!-- Статус стека -->
-      <section class="stack-section">
-        <h2 class="section-title">Стек</h2>
-        <div class="stack-grid">
-          <div v-for="item in stack" :key="item.name" class="stack-item glass">
-            <span class="stack-icon">{{ item.icon }}</span>
-            <div>
-              <div style="font-weight:600;font-size:14px;">{{ item.name }}</div>
-              <div style="font-size:12px;color:var(--text-muted);">{{ item.role }}</div>
+          <!-- Секция модулей -->
+          <section class="modules-section">
+            <h2 class="section-title">Доступные модули</h2>
+            
+            <div class="modules-grid">
+              <component
+                v-for="mod in modules"
+                :key="mod.name"
+                :is="mod.link ? 'RouterLink' : 'div'"
+                :to="mod.link || undefined"
+                class="module-card glass glass-hover"
+                style="text-decoration: none;"
+              >
+                <!-- Подсвечивающийся задний фон при наведении -->
+                <div class="card-glow" :style="{ background: mod.glowColor }"></div>
+                
+                <div class="card-header-row">
+                  <div class="module-icon-box" :style="{ background: mod.iconBg }">
+                    <span class="m-icon">{{ mod.icon }}</span>
+                  </div>
+                  <span v-if="mod.link" class="status-tag active-tag">Доступно</span>
+                  <span v-else class="status-tag coming-tag">В разработке</span>
+                </div>
+
+                <div class="module-details">
+                  <h3 class="module-card-title">{{ mod.name }}</h3>
+                  <p class="module-card-desc">{{ mod.desc }}</p>
+                </div>
+
+                <div class="module-card-footer">
+                  <div class="tech-stack-row">
+                    <span v-for="tag in mod.tech" :key="tag" class="tech-capsule">{{ tag }}</span>
+                  </div>
+                  <span v-if="mod.link" class="action-arrow">Открыть →</span>
+                </div>
+              </component>
             </div>
-            <div class="status-dot" :class="item.status"></div>
-          </div>
+          </section>
         </div>
-      </section>
 
+        <!-- Правая колонка: Боковая панель -->
+        <aside class="sidebar-column">
+          <!-- Статус Стэка -->
+          <section class="panel-section glass">
+            <h3 class="panel-title">Статус инфраструктуры</h3>
+            <div class="stack-list">
+              <div v-for="item in stack" :key="item.name" class="stack-item-row">
+                <span class="stack-emoji">{{ item.icon }}</span>
+                <div class="stack-info-meta">
+                  <div class="stack-name">{{ item.name }}</div>
+                  <div class="stack-role">{{ item.role }}</div>
+                </div>
+                <div class="uptime-badge" :class="item.status">
+                  <span class="uptime-dot"></span>
+                  <span>{{ item.status === 'online' ? 'Uptime' : 'Offline' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Системный лог -->
+          <section class="panel-section glass">
+            <h3 class="panel-title">Системные события</h3>
+            <div class="sys-log-box">
+              <div v-for="(log, idx) in sysLogs" :key="idx" class="log-entry">
+                <span class="log-time">{{ log.time }}</span>
+                <span class="log-text">{{ log.message }}</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+      </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
-
-// Первая буква username или email для аватара
-const userInitial = computed(() =>
-  (auth.user?.username || auth.user?.email)?.charAt(0).toUpperCase() ?? '?'
-)
 
 const modules = [
   {
     icon: '📝',
     name: 'Заметки',
-    desc: 'Полностью адаптивные заметки с автосохранением и поиском. Real-time синхронизация через WebSockets — в планах.',
-    iconBg: 'rgba(169, 103, 59, 0.15)', // Cinnamon/Clay
-    tech: ['Go', 'PostgreSQL'],
-    link: '/notes',  // уже работает!
+    desc: 'Персональный блокнот с автосохранением и разметкой. Готов к быстрым записям.',
+    iconBg: 'rgba(169, 103, 59, 0.15)',
+    glowColor: 'rgba(169, 103, 59, 0.05)',
+    tech: ['Go', 'PostgreSQL', 'WebSockets'],
+    link: '/notes',
   },
   {
     icon: '⭐',
     name: 'Рецензии',
-    desc: 'Список просмотренного: фильмы, аниме, сериалы. 4 статуса + оценки + ссылки на Kinopoisk, IMDB, Shikimori.',
-    iconBg: 'rgba(192, 133, 82, 0.15)', // Caramel/Ochre
-    tech: ['Go', 'PostgreSQL'],
+    desc: 'Каталог фильмов, сериалов и аниме. Оценки, статусы, комментарии и ссылки.',
+    iconBg: 'rgba(192, 133, 82, 0.15)',
+    glowColor: 'rgba(192, 133, 82, 0.06)',
+    tech: ['Go', 'PostgreSQL', 'TMDB API'],
     link: '/reviews',
   },
   {
     icon: '📹',
     name: 'Видеочат',
-    desc: 'P2P видеозвонки и демонстрация экрана на базе WebRTC. Go выступает только сигнальным сервером.',
-    iconBg: 'rgba(124, 154, 110, 0.18)', // Matcha/Sage
-    tech: ['Go', 'WebRTC', 'WebSocket'],
+    desc: 'Комнаты для звонков с поддержкой WebRTC и шеринга экрана без лишних задержек.',
+    iconBg: 'rgba(124, 154, 110, 0.18)',
+    glowColor: 'rgba(124, 154, 110, 0.05)',
+    tech: ['Go Signalling', 'WebRTC'],
     link: '/screenshare',
   },
   {
     icon: '📺',
     name: 'Watch Party',
-    desc: 'Смотри YouTube, Rutube и видеофайлы вместе с друзьями. Синхронный play/pause/seek.',
-    iconBg: 'rgba(201, 112, 100, 0.15)', // Dusty-rose
-    tech: ['Go', 'WebSocket', 'YouTube API'],
+    desc: 'Синхронный просмотр видеофайлов и YouTube совместно с друзьями.',
+    iconBg: 'rgba(201, 112, 100, 0.15)',
+    glowColor: 'rgba(201, 112, 100, 0.05)',
+    tech: ['Go WS', 'YouTube API'],
     link: '/watch',
   },
 ]
 
-// Статус сервисов (в реальности можно подтягивать с /api/health)
 const stack = [
-  { icon: '🐹', name: 'Go Backend',   role: 'REST API + сигналинг', status: 'online' },
-  { icon: '🐘', name: 'PostgreSQL',   role: 'Основная БД',          status: 'online' },
-  { icon: '🔴', name: 'Redis',        role: 'Сессии + кэш',         status: 'online' },
-  { icon: '⚡', name: 'Caddy',        role: 'Reverse Proxy',        status: 'online' },
-  { icon: '🟢', name: 'Vue 3 + Vite', role: 'Фронтенд',             status: 'online' },
+  { icon: '🐹', name: 'Go Backend',   role: 'REST API + WS Signalling', status: 'online' },
+  { icon: '🐘', name: 'PostgreSQL',   role: 'Основная база данных',     status: 'online' },
+  { icon: '🔴', name: 'Redis',        role: 'Кэш и сессии севера',       status: 'online' },
+  { icon: '⚡', name: 'Caddy server', role: 'Реверс-прокси шлюз',       status: 'online' },
+  { icon: '🟢', name: 'Vue 3 + Vite', role: 'SPA клиентский бандл',     status: 'online' },
 ]
 
-// При монтировании — проверяем что пользователь загружен
+const sysLogs = ref([
+  { time: '14:02', message: 'Авторизована сессия пользователя' },
+  { time: '14:00', message: 'Сигнальные сокеты WebRTC подключены' },
+  { time: '13:58', message: 'Синхронизация списков Shikimori завершена' },
+  { time: '13:55', message: 'БД PostgreSQL: пул соединений стабилен' },
+])
+
 onMounted(async () => {
   if (!auth.user && auth.accessToken) {
-    // Если токен есть, но пользователь не загружен (редкий случай)
     await auth.tryRestoreSession()
   }
 })
@@ -142,22 +189,49 @@ onMounted(async () => {
 <style scoped>
 .dashboard-page {
   min-height: 100vh;
-  background: var(--bg-base);
-  position: relative;
+  background-color: var(--bg-base);
 }
 
-/* ── Основной контент ── */
 .dashboard-main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px 80px;
+  padding: 16px 24px 80px;
 }
 
-/* ── Приветствие ── */
-.welcome-section {
+/* Сетка дашборда */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 8fr 3fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Левая основная колонка */
+.main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Герой-приветствие */
+.welcome-hero {
   position: relative;
   overflow: hidden;
-  padding: 60px 0 48px;
+  padding: 44px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.orb-blur {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.1;
+  pointer-events: none;
 }
 
 .welcome-content {
@@ -165,22 +239,88 @@ onMounted(async () => {
   z-index: 1;
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(124, 154, 110, 0.12);
+  border: 1px solid rgba(124, 154, 110, 0.25);
+  color: var(--matcha);
+  margin-bottom: 24px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--matcha);
+  box-shadow: 0 0 8px var(--matcha);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(124, 154, 110, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(124, 154, 110, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(124, 154, 110, 0); }
+}
+
 .welcome-title {
   font-family: var(--font-display);
-  font-size: clamp(32px, 5vw, 52px);
+  font-size: clamp(28px, 4vw, 44px);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 12px;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
+  margin-bottom: 12px;
+  line-height: 1.2;
 }
 
-.badge-status-ok {
-  background: rgba(124, 154, 110, 0.12) !important;
-  border: 1px solid rgba(124, 154, 110, 0.25) !important;
-  color: var(--matcha) !important;
+.welcome-subtitle {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 520px;
+  margin-bottom: 32px;
 }
 
-/* ── Секции ── */
+/* Быстрая статистика */
+.quick-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-top: 1px dashed var(--border);
+  padding-top: 24px;
+}
+
+.stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+}
+
+.stat-num {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Секция модулей */
 .section-title {
   font-size: 11px;
   font-weight: 700;
@@ -190,140 +330,272 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
-/* ── Карточки модулей ── */
-.modules-section {
-  margin-bottom: 40px;
-}
-
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 20px;
 }
 
 .module-card {
+  position: relative;
   border-radius: var(--radius-lg);
   padding: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 200px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: space-between;
+  min-height: 220px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--shadow-sm);
 }
 
 .module-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--border-hover);
   box-shadow: var(--shadow-lg);
 }
 
-.module-info {
-  flex: 1;
+.card-glow {
+  position: absolute;
+  inset: 0;
+  filter: blur(40px);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.module-card:hover .card-glow {
+  opacity: 1;
 }
 
-.module-name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--text-primary);
-}
-
-.module-desc {
-  font-size: 13.5px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.module-footer {
+.card-header-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.btn-open-cta {
-  display: inline-flex;
   align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 99px;
-  background: var(--primary);
-  color: var(--latte-foam);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px var(--primary-glow);
+  position: relative;
+  z-index: 2;
 }
 
-.module-card:hover .btn-open-cta {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--primary-glow);
-}
-
-.module-tech {
+.module-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.m-icon {
+  font-size: 20px;
+}
+
+.status-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+
+.active-tag {
+  background: rgba(124, 154, 110, 0.12);
+  color: var(--matcha);
+  border: 1px solid rgba(124, 154, 110, 0.25);
+}
+
+.coming-tag {
+  background: var(--btn-ghost-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.module-details {
+  position: relative;
+  z-index: 2;
+  margin: 16px 0;
+}
+
+.module-card-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.module-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.module-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 8px;
+}
+
+.tech-stack-row {
+  display: flex;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
-.tech-tag {
+.tech-capsule {
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: rgba(107, 74, 54, 0.08);
-  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
-  font-weight: 500;
+  color: var(--text-muted);
 }
 
-/* ── Стек ── */
-.stack-section {
-  margin-bottom: 40px;
+.action-arrow {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  transition: transform 0.2s;
 }
 
-.stack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+.module-card:hover .action-arrow {
+  transform: translateX(3px);
+  color: var(--primary-hover);
+}
+
+/* Правая колонка / Сайдбар */
+.sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-section {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.stack-list {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.stack-item {
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
+.stack-item-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.stack-item-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.stack-item:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.stack-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
+.stack-emoji {
+  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-ghost-bg);
   border-radius: 50%;
-  margin-left: auto;
+}
+
+.stack-info-meta {
+  flex: 1;
+}
+
+.stack-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stack-role {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.uptime-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--matcha);
+}
+
+.uptime-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--matcha);
+  box-shadow: 0 0 6px var(--matcha);
+}
+
+/* Логи событий */
+.sys-log-box {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.log-time {
+  color: var(--primary);
   flex-shrink: 0;
 }
 
-.status-dot.online {
-  background: var(--matcha);
-  box-shadow: 0 0 8px rgba(124, 154, 110, 0.5);
+.log-text {
+  color: var(--text-secondary);
 }
 
-.status-dot.offline {
-  background: var(--text-muted);
+/* Адаптив */
+@media (max-width: 992px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .welcome-hero {
+    padding: 24px;
+  }
+  .quick-stats-row {
+    gap: 8px;
+  }
+  .stat-badge {
+    padding: 6px 12px;
+  }
 }
 </style>

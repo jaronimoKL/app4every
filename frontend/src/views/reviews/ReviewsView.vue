@@ -44,227 +44,348 @@
         <span class="tab-icon">{{ tab.icon }}</span>
         <span class="tab-label">{{ tab.label }}</span>
         <span class="tab-count" :style="{ background: tab.countBg }">
-          {{ store.byStatus[tab.key].length }}
+          {{ (store.byStatus[tab.key] || []).length }}
         </span>
       </button>
     </div>
 
-    <!-- ══ ПАНЕЛЬ ПОИСКА И ФИЛЬТРОВ ══ -->
-    <div class="filter-panel glass">
-      <div class="filter-row flex flex-wrap gap-4 items-center">
+    <!-- ══ ОСНОВНОЙ КОНТЕНТ (SPLIT PANE CATALOG) ══ -->
+    <div class="catalog-layout">
+      
+      <!-- Левый Сайдбар Фильтров -->
+      <aside class="sidebar-filters glass">
         <!-- Поиск -->
-        <div class="filter-search flex-1 min-w-[200px]">
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="form-input"
-            placeholder="Поиск по названию..."
-            style="padding: 8px 12px; font-size: 13px;"
-          />
-        </div>
-        
-        <!-- Тип контента (radio) -->
-        <div class="filter-types modern-pills">
-          <button class="pill-btn" :class="{active: selectedContentType === 'all'}" @click="selectedContentType = 'all'">Все</button>
-          <button v-for="t in contentTypes" :key="t.value" class="pill-btn" :class="{active: selectedContentType === t.value}" @click="selectedContentType = t.value">
-            {{ t.icon }} {{ t.label }}
-          </button>
+        <div class="sidebar-group">
+          <label class="sidebar-label">Поиск</label>
+          <div class="search-input-wrapper">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="form-input search-input"
+              placeholder="Название тайтла..."
+            />
+            <span class="search-indicator-icon">🔍</span>
+          </div>
         </div>
 
-        <!-- Shikimori фильтр -->
-        <div class="shikimori-filter flex items-center bg-[rgba(255,255,255,0.05)] rounded-md p-1">
-          <button 
-            class="shikimori-btn" 
-            :class="{ active: selectedShikimoriFilter === 'all' }" 
-            @click="selectedShikimoriFilter = 'all'"
-            title="Все рецензии"
-          >
-            <div class="shiki-icon shiki-half"></div>
-          </button>
-          <button 
-            class="shikimori-btn" 
-            :class="{ active: selectedShikimoriFilter === 'shikimori_only' }" 
-            @click="selectedShikimoriFilter = 'shikimori_only'"
-            title="Только с Shikimori"
-          >
-            <div class="shiki-icon shiki-full"></div>
-          </button>
-          <button 
-            class="shikimori-btn" 
-            :class="{ active: selectedShikimoriFilter === 'app_only' }" 
-            @click="selectedShikimoriFilter = 'app_only'"
-            title="Созданные в приложении"
-          >
-            <div class="shiki-icon shiki-empty"></div>
-          </button>
+        <!-- Тип медиа -->
+        <div class="sidebar-group">
+          <label class="sidebar-label">Тип контента</label>
+          <div class="stack-filters">
+            <button
+              class="stack-filter-btn"
+              :class="{ active: selectedContentType === 'all' }"
+              @click="selectedContentType = 'all'"
+            >
+              <span>📺 Все медиа</span>
+            </button>
+            <button
+              v-for="t in contentTypes"
+              :key="t.value"
+              class="stack-filter-btn"
+              :class="{ active: selectedContentType === t.value }"
+              @click="selectedContentType = t.value"
+            >
+              <span>{{ t.icon }} {{ t.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Источник контента -->
+        <div class="sidebar-group">
+          <label class="sidebar-label">Источник</label>
+          <div class="source-selector-grid">
+            <button
+              class="source-btn"
+              :class="{ active: selectedShikimoriFilter === 'all' }"
+              @click="selectedShikimoriFilter = 'all'"
+            >
+              Все
+            </button>
+            <button
+              class="source-btn"
+              :class="{ active: selectedShikimoriFilter === 'shikimori_only' }"
+              @click="selectedShikimoriFilter = 'shikimori_only'"
+            >
+              Shiki
+            </button>
+            <button
+              class="source-btn"
+              :class="{ active: selectedShikimoriFilter === 'app_only' }"
+              @click="selectedShikimoriFilter = 'app_only'"
+            >
+              Ручные
+            </button>
+          </div>
+        </div>
+
+        <!-- Мультиселект жанров -->
+        <div class="sidebar-group" v-if="availableGenres.length > 0">
+          <label class="sidebar-label">Фильтр по жанрам</label>
+          <div class="genres-multiselect">
+            <button
+              v-for="genreName in availableGenres"
+              :key="genreName"
+              class="genre-select-badge"
+              :class="{ active: selectedGenres.has(genreName) }"
+              @click="toggleFilterGenre(genreName)"
+            >
+              {{ genreName }}
+            </button>
+          </div>
         </div>
 
         <!-- Кнопка сброса -->
         <button
           v-if="isAnyFilterActive"
           @click="resetFilters"
-          class="btn btn-ghost reset-filters-btn"
-          style="padding: 7px 12px; font-size: 12px;"
+          class="btn btn-ghost w-full text-xs mt-4"
+          style="padding: 8px;"
         >
           Сбросить фильтры
         </button>
-      </div>
+      </aside>
 
-      <!-- Фильтр по жанрам (мультиселект-теги) -->
-      <div class="filter-genres-row mt-3" v-if="availableGenres.length > 0">
-        <span style="font-size:12px; color:var(--text-secondary); margin-right:8px;">Жанры:</span>
-        <div class="filter-genres flex flex-wrap gap-1 inline-flex">
-          <button
-            v-for="genreName in availableGenres"
-            :key="genreName"
-            class="filter-genre-btn"
-            :class="{ active: selectedGenres.has(genreName) }"
-            @click="toggleFilterGenre(genreName)"
-          >
-            {{ genreName }}
-          </button>
+      <!-- Правый Фид Медиа Каталога -->
+      <div class="catalog-feed">
+        
+        <!-- Заголовок фида & Переключатель видов -->
+        <div class="feed-header glass">
+          <div class="feed-title-meta">
+            <span class="feed-count-badge">{{ currentReviews.length }}</span>
+            <span class="feed-count-label">найдено в списке «{{ currentTab?.label }}»</span>
+          </div>
+
+          <div class="view-mode-toggle">
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'grid' }"
+              @click="toggleViewMode('grid')"
+              title="Режим плитки"
+            >
+              ⬚ Сетка
+            </button>
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'list' }"
+              @click="toggleViewMode('list')"
+              title="Режим списка"
+            >
+              ☰ Список
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ══ ОСНОВНОЙ КОНТЕНТ ══ -->
-    <div class="rv-body">
+        <!-- Состояние: загрузка / пусто -->
+        <div v-if="store.loading" class="empty-state">
+          <div class="spinner" style="width:32px;height:32px;"></div>
+        </div>
 
-      <!-- Загрузка -->
-      <div v-if="store.loading" class="empty-state">
-        <div class="spinner" style="width:32px;height:32px;"></div>
-      </div>
+        <div v-else-if="currentReviews.length === 0" class="empty-state glass">
+          <template v-if="isAnyFilterActive">
+            <div style="font-size:44px;margin-bottom:12px;">🔍</div>
+            <h3 style="font-weight:700;font-size:16px;margin-bottom:6px;">Ничего не найдено</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Попробуйте изменить параметры поиска или сбросить фильтры</p>
+            <button class="btn btn-primary text-xs py-2 px-4" @click="resetFilters">Сбросить фильтры</button>
+          </template>
+          <template v-else>
+            <div style="font-size:44px;margin-bottom:12px;">{{ currentTab.icon }}</div>
+            <h3 style="font-weight:700;font-size:16px;margin-bottom:6px;">{{ currentTab.emptyTitle }}</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">{{ currentTab.emptyDesc }}</p>
+            <button class="btn btn-primary text-xs py-2 px-4" @click="openCreate">Добавить</button>
+          </template>
+        </div>
 
-      <!-- Пустой список -->
-      <div v-else-if="currentReviews.length === 0" class="empty-state">
-        <template v-if="isAnyFilterActive">
-          <div style="font-size:52px;margin-bottom:16px;">🔍</div>
-          <h3 style="font-weight:700;font-size:17px;margin-bottom:8px;">Ничего не найдено</h3>
-          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">Попробуйте изменить параметры поиска или сбросить фильтры</p>
-          <button class="btn btn-primary" style="padding:10px 24px;" @click="resetFilters">Сбросить фильтры</button>
-        </template>
-        <template v-else>
-          <div style="font-size:52px;margin-bottom:16px;">{{ currentTab.icon }}</div>
-          <h3 style="font-weight:700;font-size:17px;margin-bottom:8px;">{{ currentTab.emptyTitle }}</h3>
-          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">{{ currentTab.emptyDesc }}</p>
-          <button class="btn btn-primary" style="padding:10px 24px;" @click="openCreate">Добавить</button>
-        </template>
-      </div>
-
-      <!-- Сетка карточек -->
-      <div v-else class="card-grid">
-        <div
-          v-for="rev in currentReviews.slice(0, visibleLimit)"
-          :key="rev.id"
-          class="rv-card"
-          @click="openEdit(rev)"
-        >
-          <!-- Постер или заглушка -->
-          <div class="card-poster" :style="!rev.poster_url ? { background: posterGradients[rev.content_type] || posterGradients.movie } : {}">
-            <div v-if="rev.poster_url && !loadedImages[rev.id]" class="poster-skeleton">
-              <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
+        <!-- Сетка карточек (Grid View) -->
+        <div v-else-if="viewMode === 'grid'" class="card-grid">
+          <div
+            v-for="rev in currentReviews.slice(0, visibleLimit)"
+            :key="rev.id"
+            class="rv-card"
+            @click="openEdit(rev)"
+          >
+            <!-- Постер или заглушка -->
+            <div class="card-poster" :style="!rev.poster_url ? { background: posterGradients[rev.content_type] || posterGradients.movie } : {}">
+              <div v-if="rev.poster_url && !loadedImages[rev.id]" class="poster-skeleton">
+                <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
+              </div>
+              <img 
+                v-if="rev.poster_url" 
+                :src="rev.poster_url" 
+                class="poster-img"
+                :class="{ 'img-loaded': loadedImages[rev.id] }"
+                @load="loadedImages[rev.id] = true"
+                @error="loadedImages[rev.id] = true"
+                loading="lazy"
+              />
+              <div class="card-poster-overlay"></div>
+              
+              <!-- Бейдж типа -->
+              <div class="card-type-badge" :style="{ background: typeColor(rev.content_type) }">
+                {{ typeIcon(rev.content_type) }} {{ typeLabel(rev.content_type) }}
+              </div>
+              
+              <!-- Бейдж Shikimori -->
+              <div v-if="rev.shikimori_id" class="shikimori-badge">
+                <span title="Синхронизировано с Shikimori">⛩️ Shikimori</span>
+              </div>
+              
+              <!-- Оценка и Прогресс -->
+              <div class="card-badges-top-right" v-if="rev.rating || rev.episodes_total">
+                <div class="card-rating" v-if="rev.rating">
+                  <span class="rating-star">★</span>
+                  <span class="rating-num">{{ rev.rating }}</span>
+                  <span class="rating-max">/10</span>
+                </div>
+              </div>
             </div>
-            <img 
-              v-if="rev.poster_url" 
-              :src="rev.poster_url" 
-              class="poster-img"
-              :class="{ 'img-loaded': loadedImages[rev.id] }"
-              @load="loadedImages[rev.id] = true"
-              @error="loadedImages[rev.id] = true"
-              loading="lazy"
-            />
-            <div class="card-poster-overlay"></div>
-            <!-- Бейдж типа -->
-            <div class="card-type-badge" :style="{ background: typeColor(rev.content_type) }">
-              {{ typeIcon(rev.content_type) }} {{ typeLabel(rev.content_type) }}
-            </div>
-            <!-- Бейдж Shikimori -->
-            <div v-if="rev.shikimori_id" class="shikimori-badge">
-              <span title="Синхронизировано с Shikimori">⛩️ Shikimori</span>
-            </div>
-            <!-- Оценка и Прогресс -->
-            <div class="card-badges-top-right" v-if="rev.rating || rev.episodes_total">
-              <div class="card-rating" v-if="rev.rating">
-                <span class="rating-star">★</span>
-                <span class="rating-num">{{ rev.rating }}</span>
-                <span class="rating-max">/10</span>
+
+            <!-- Информация под постером -->
+            <div class="card-info">
+              <div class="card-title">{{ rev.title }}</div>
+              <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs font-semibold" v-if="rev.episodes_total && rev.content_type !== 'movie'" style="color: var(--primary)">
+                <span>🎬</span> Серия: {{ rev.current_episode || 0 }} из {{ rev.episodes_total }}
+                <button 
+                  class="btn-increment-ep ml-auto"
+                  v-if="(rev.current_episode || 0) < rev.episodes_total" 
+                  @click.stop="incrementEpisode(rev)"
+                  title="Отметить следующую серию просмотренной"
+                >
+                  ＋1
+                </button>
+              </div>
+              
+              <!-- Теги жанров на карточке -->
+              <div class="card-genres flex flex-wrap gap-1 mb-2" v-if="rev.genres && rev.genres.length > 0">
+                <span v-for="g in rev.genres" :key="g.id" class="card-genre-pill">
+                  {{ g.name }}
+                </span>
+              </div>
+
+              <div class="card-notes" v-if="rev.notes">{{ rev.notes }}</div>
+              
+              <!-- Ссылки -->
+              <div class="card-links" v-if="rev.links && rev.links.length > 0" @click.stop>
+                <a
+                  v-for="link in rev.links"
+                  :key="link.id"
+                  :href="link.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="link-pill"
+                >
+                  🔗 {{ link.label || 'Ссылка' }}
+                </a>
+                <button
+                  v-if="rev.shikimori_id || rev.aniliberty_alias || (rev.links && rev.links.length > 0)"
+                  class="watch-together-btn"
+                  @click.stop="handleWatchTogether(rev)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                    <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                  </svg>
+                  Смотреть вместе
+                </button>
+              </div>
+              <div class="card-links" v-else-if="rev.shikimori_id || rev.aniliberty_alias" @click.stop>
+                <button
+                  class="watch-together-btn"
+                  @click.stop="handleWatchTogether(rev)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
+                    <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                  </svg>
+                  Смотреть вместе
+                </button>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Информация под постером -->
-          <div class="card-info">
-            <div class="card-title">{{ rev.title }}</div>
-            <div class="card-episode-progress mt-1.5 flex items-center gap-1.5 text-xs text-indigo-300 font-semibold" v-if="rev.episodes_total && rev.content_type !== 'movie'">
-              <span>🎬</span> Серия: {{ rev.current_episode || 0 }} из {{ rev.episodes_total }}
+        <!-- Список строк (List View) -->
+        <div v-else-if="viewMode === 'list'" class="card-list">
+          <div
+            v-for="rev in currentReviews.slice(0, visibleLimit)"
+            :key="rev.id"
+            class="list-row glass glass-hover"
+            @click="openEdit(rev)"
+          >
+            <!-- Миниатюрный постер -->
+            <div class="list-poster-thumbnail" :style="rev.poster_url ? { backgroundImage: `url(${rev.poster_url})` } : { background: posterGradients[rev.content_type] || posterGradients.movie }">
+              <span v-if="!rev.poster_url" class="text-sm">{{ typeIcon(rev.content_type) }}</span>
+            </div>
+
+            <!-- Контент и мета -->
+            <div class="list-details">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h4 class="list-title">{{ rev.title }}</h4>
+                <span class="list-type-badge" :style="{ color: typeColor(rev.content_type), borderColor: typeColor(rev.content_type) + '30', background: typeColor(rev.content_type) + '10' }">
+                  {{ typeIcon(rev.content_type) }} {{ typeLabel(rev.content_type) }}
+                </span>
+                <span v-if="rev.shikimori_id" class="list-shiki-badge" title="Синхронизировано с Shikimori">⛩️ Shiki</span>
+              </div>
+              <p class="list-notes-text" v-if="rev.notes">{{ rev.notes }}</p>
+              <div class="list-genres flex flex-wrap gap-1 mt-1" v-if="rev.genres && rev.genres.length > 0">
+                <span v-for="g in rev.genres" :key="g.id" class="list-genre-badge">{{ g.name }}</span>
+              </div>
+            </div>
+
+            <!-- Оценки и прогресс серий -->
+            <div class="list-stats-info">
+              <div class="list-rating" v-if="rev.rating">
+                <span style="color: var(--primary);">★</span>
+                <span style="font-weight: 700;">{{ rev.rating }}</span>
+                <span style="color: var(--text-muted); font-size: 11px;">/10</span>
+              </div>
+              
+              <div class="list-episodes" v-if="rev.episodes_total && rev.content_type !== 'movie'">
+                <div class="text-xs font-semibold mb-1" style="color: var(--text-secondary);">
+                  Серии: {{ rev.current_episode || 0 }} / {{ rev.episodes_total }}
+                </div>
+                <div class="list-progress-bar">
+                  <div class="list-progress-fill" :style="{ width: ((rev.current_episode || 0) / rev.episodes_total * 100) + '%' }"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Действия -->
+            <div class="list-row-actions" @click.stop>
               <button 
-                class="btn-increment-ep ml-auto"
-                v-if="(rev.current_episode || 0) < rev.episodes_total" 
-                @click.stop="incrementEpisode(rev)"
-                title="Отметить следующую серию просмотренной"
+                class="list-inc-btn"
+                v-if="rev.episodes_total && rev.content_type !== 'movie' && (rev.current_episode || 0) < rev.episodes_total" 
+                @click="incrementEpisode(rev)"
+                title="Плюс одна серия"
               >
-                ＋1
+                ＋1 серию
               </button>
-            </div>
-            
-            <!-- Теги жанров на карточке -->
-            <div class="card-genres flex flex-wrap gap-1 mb-2" v-if="rev.genres && rev.genres.length > 0">
-              <span v-for="g in rev.genres" :key="g.id" class="card-genre-pill">
-                {{ g.name }}
-              </span>
-            </div>
-
-            <div class="card-notes" v-if="rev.notes">{{ rev.notes }}</div>
-            <!-- Ссылки -->
-            <div class="card-links" v-if="rev.links && rev.links.length > 0" @click.stop>
-              <a
-                v-for="link in rev.links"
-                :key="link.id"
-                :href="link.url"
-                target="_blank"
-                rel="noopener"
-                class="link-pill"
-              >
-                🔗 {{ link.label || 'Ссылка' }}
-              </a>
+              
               <button
+                class="watch-together-btn btn-sm"
                 v-if="rev.shikimori_id || rev.aniliberty_alias || (rev.links && rev.links.length > 0)"
-                class="watch-together-btn"
-                @click.stop="handleWatchTogether(rev)"
+                @click="handleWatchTogether(rev)"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
-                  <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
-                </svg>
-                Смотреть вместе
-              </button>
-            </div>
-            <div class="card-links" v-else-if="rev.shikimori_id || rev.aniliberty_alias" @click.stop>
-              <button
-                class="watch-together-btn"
-                @click.stop="handleWatchTogether(rev)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px; margin-right:4px; display:inline-block; vertical-align:middle;">
-                  <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
-                </svg>
                 Смотреть вместе
               </button>
             </div>
           </div>
         </div>
+
+        <!-- Триггер подгрузки -->
+        <div ref="loadMoreTrigger" class="flex justify-center py-6" style="width: 100%;">
+          <div v-if="isLoadingMore" class="spinner" style="width:32px;height:32px;"></div>
+        </div>
       </div>
 
-      <!-- Триггер для подгрузки элементов при скролле -->
-      <div ref="loadMoreTrigger" class="flex justify-center py-6" style="width: 100%;">
-        <div v-if="isLoadingMore" class="spinner" style="width:32px;height:32px;"></div>
-      </div>
-    </div>    <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
+    </div>
+
+    <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
     <Transition name="modal">
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
         <div class="modal-box glass" @click.stop>
 
           <!-- Заголовок модала -->
           <div class="modal-header">
-            <h2 class="modal-title">{{ isEditing ? 'Редактировать' : 'Добавить' }}</h2>
+            <h2 class="modal-title">{{ isEditing ? 'Редактировать рецензию' : 'Добавить рецензию' }}</h2>
             <button class="modal-close" @click="closeModal">✕</button>
           </div>
 
@@ -281,161 +402,176 @@
             />
             <template v-else>
 
-            <!-- Тип контента -->
-            <div class="form-group">
-              <label class="form-label">Тип</label>
-              <div class="type-selector">
-                <button
-                  v-for="t in contentTypes"
-                  :key="t.value"
-                  class="type-btn"
-                  :class="{ active: form.content_type === t.value }"
-                  @click="form.content_type = t.value"
-                >{{ t.icon }} {{ t.label }}</button>
-              </div>
-            </div>
-
-            <!-- Кнопка поиска для контента (только при создании) -->
-            <div v-if="form.content_type === 'anime' && !isEditing" class="mb-4">
-              <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
-                🔍 Найти на Shikimori (Автозаполнение)
-              </button>
-            </div>
-            <div v-if="(form.content_type === 'movie' || form.content_type === 'series') && !isEditing" class="mb-4">
-              <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
-                🔍 Найти на TMDB (Автозаполнение)
-              </button>
-            </div>
-
-            <!-- Название -->
-            <div class="form-group">
-              <label class="form-label">Название <span style="color:var(--dusty-rose)">*</span></label>
-              <input v-model="form.title" type="text" class="form-input" placeholder="Введите название..." />
-            </div>
-
-            <!-- Статус -->
-            <div class="form-group">
-              <label class="form-label">Статус</label>
-              <div class="status-selector">
-                <button
-                  v-for="s in statusOptions"
-                  :key="s.value"
-                  class="status-opt"
-                  :class="{ active: form.status === s.value }"
-                  :style="form.status === s.value ? { borderColor: s.color, background: s.color + '22' } : {}"
-                  @click="form.status = s.value"
-                >{{ s.icon }} {{ s.label }}</button>
-              </div>
-            </div>
-
-            <!-- Оценка -->
-            <div class="form-group">
-              <label class="form-label">
-                Оценка
-                <span style="color:var(--text-muted);font-size:12px;margin-left:6px;">({{ form.rating ? form.rating + '/10' : 'не задана' }})</span>
-              </label>
-              <div class="rating-row">
-                <button
-                  v-for="n in 10"
-                  :key="n"
-                  class="rating-btn"
-                  :class="{ active: form.rating >= n, high: n >= 8, mid: n >= 5 && n < 8 }"
-                  @click="form.rating = form.rating === n ? null : n"
-                >{{ n }}</button>
-                <button class="rating-btn clear-btn" v-if="form.rating" @click="form.rating = null" title="Сбросить">✕</button>
-              </div>
-            </div>
-
-            <!-- Постер URL -->
-            <div class="form-group">
-              <label class="form-label">URL постера <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
-              <input v-model="form.poster_url" type="url" class="form-input" placeholder="https://..." />
-              <div v-if="form.poster_url" class="poster-preview">
-                <img :src="form.poster_url" alt="Постер" @error="posterLoadError = true" @load="posterLoadError = false" />
-                <span v-if="posterLoadError" class="poster-error">❌ Не удалось загрузить изображение</span>
-              </div>
-            </div>
-
-            <!-- Прогресс просмотра (серии) -->
-            <div class="form-group" v-if="form.content_type !== 'movie'">
-              <label class="form-label">Прогресс серий</label>
-              <div class="flex items-center gap-2">
-                <input v-model.number="form.current_episode" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Текущая" />
-                <span class="text-gray-400">из</span>
-                <input v-model.number="form.episodes_total" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Всего" />
-              </div>
-            </div>
-
-            <!-- Заметка -->
-            <div class="form-group">
-              <label class="form-label">Заметка <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
-              <textarea v-model="form.notes" class="form-textarea" rows="2" placeholder="Впечатления, мысли..."></textarea>
-            </div>
-
-            <!-- Жанры -->
-            <div class="form-group">
-              <label class="form-label">Жанры</label>
-
-              <!-- Текущие жанры -->
-              <div class="genres-list flex flex-wrap gap-2 mb-1" v-if="form.genres && form.genres.length > 0">
-                <span v-for="g in form.genres" :key="g.name" class="genre-pill">
-                  {{ g.name }}
-                  <button type="button" class="genre-del-btn" @click="removeGenre(g)">×</button>
-                </span>
-              </div>
-
-              <!-- Быстрые жанры -->
-              <div class="quick-genres flex flex-wrap gap-1 mb-2">
-                <button
-                  v-for="gName in availableQuickGenres"
-                  :key="gName"
-                  type="button"
-                  class="quick-genre-btn"
-                  :class="{ active: form.genres.some(g => g.name.toLowerCase() === gName.toLowerCase()) }"
-                  @click="toggleQuickGenre(gName)"
-                >
-                  {{ gName }}
-                </button>
-              </div>
-
-              <!-- Свой жанр -->
-              <div class="flex gap-2">
-                <input
-                  v-model="newGenreName"
-                  type="text"
-                  class="form-input"
-                  placeholder="Свой жанр..."
-                  @keydown.enter.prevent="addGenre(newGenreName)"
-                />
-                <button type="button" class="btn btn-ghost" style="padding: 9px 16px;" @click="addGenre(newGenreName)">＋</button>
-              </div>
-            </div>
-
-            <!-- Ссылки -->
-            <div class="form-group">
-              <label class="form-label">Ссылки</label>
-
-              <!-- Список существующих ссылок (при редактировании) -->
-              <div v-if="isEditing && editingReview?.links?.length > 0" class="existing-links">
-                <div v-for="link in editingReview.links" :key="link.id" class="existing-link">
-                  <div class="link-info">
-                    <span class="link-label-text">{{ link.label || '—' }}</span>
-                    <a :href="link.url" target="_blank" class="link-url-text" rel="noopener">{{ truncUrl(link.url) }}</a>
+            <!-- Двухколоночная сетка формы -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <!-- Левая колонка: Основные метаданные -->
+              <div class="flex flex-col gap-4">
+                
+                <!-- Тип контента -->
+                <div class="form-group">
+                  <label class="form-label">Тип медиа</label>
+                  <div class="type-selector">
+                    <button
+                      v-for="t in contentTypes"
+                      :key="t.value"
+                      class="type-btn"
+                      :class="{ active: form.content_type === t.value }"
+                      @click="form.content_type = t.value"
+                    >{{ t.icon }} {{ t.label }}</button>
                   </div>
-                  <button class="link-del-btn" @click="handleDeleteLink(link.id)" title="Удалить">✕</button>
+                </div>
+
+                <!-- Кнопки автозаполнения -->
+                <div v-if="form.content_type === 'anime' && !isEditing" class="mb-1">
+                  <button class="btn btn-primary w-full text-xs py-2" @click="showAnimeSearch = true">
+                    🔍 Найти на Shikimori (Автозаполнение)
+                  </button>
+                </div>
+                <div v-if="(form.content_type === 'movie' || form.content_type === 'series') && !isEditing" class="mb-1">
+                  <button class="btn btn-primary w-full text-xs py-2" @click="showMovieSearch = true">
+                    🔍 Найти на TMDB (Автозаполнение)
+                  </button>
+                </div>
+
+                <!-- Название -->
+                <div class="form-group">
+                  <label class="form-label">Название тайтла <span style="color:var(--dusty-rose)">*</span></label>
+                  <input v-model="form.title" type="text" class="form-input" placeholder="Введите название..." />
+                </div>
+
+                <!-- Статус -->
+                <div class="form-group">
+                  <label class="form-label">Статус просмотра</label>
+                  <div class="status-selector">
+                    <button
+                      v-for="s in statusOptions"
+                      :key="s.value"
+                      class="status-opt"
+                      :class="{ active: form.status === s.value }"
+                      :style="form.status === s.value ? { borderColor: s.color, background: s.color + '1a' } : {}"
+                      @click="form.status = s.value"
+                    >{{ s.icon }} {{ s.label }}</button>
+                  </div>
                 </div>
               </div>
 
-              <!-- Добавить новую ссылку -->
-              <div v-for="(nl, i) in newLinks" :key="i" class="new-link-row">
-                <input v-model="nl.label" type="text" class="form-input link-label-input" placeholder="Kinopoisk / IMDB..." />
-                <input v-model="nl.url" type="url" class="form-input link-url-input" placeholder="https://..." />
-                <button class="link-del-btn" @click="newLinks.splice(i, 1)">✕</button>
+              <!-- Правая колонка: Прогресс, Оценка, Постер -->
+              <div class="flex flex-col gap-4">
+                <!-- Оценка -->
+                <div class="form-group">
+                  <label class="form-label">
+                    Оценка
+                    <span style="color:var(--text-muted);font-size:12px;margin-left:6px;">({{ form.rating ? form.rating + '/10' : 'не задана' }})</span>
+                  </label>
+                  <div class="rating-row">
+                    <button
+                      v-for="n in 10"
+                      :key="n"
+                      class="rating-btn"
+                      :class="{ active: form.rating >= n, high: n >= 8, mid: n >= 5 && n < 8 }"
+                      @click="form.rating = form.rating === n ? null : n"
+                    >{{ n }}</button>
+                    <button class="rating-btn clear-btn" v-if="form.rating" @click="form.rating = null" title="Сбросить">✕</button>
+                  </div>
+                </div>
+
+                <!-- Прогресс просмотра (серии) -->
+                <div class="form-group" v-if="form.content_type !== 'movie'">
+                  <label class="form-label">Прогресс серий</label>
+                  <div class="flex items-center gap-2">
+                    <input v-model.number="form.current_episode" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Тек." />
+                    <span class="text-gray-400">из</span>
+                    <input v-model.number="form.episodes_total" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Всего" />
+                  </div>
+                </div>
+
+                <!-- Постер URL -->
+                <div class="form-group">
+                  <label class="form-label">URL постера</label>
+                  <input v-model="form.poster_url" type="url" class="form-input" placeholder="https://ссылка-на-картинку..." />
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 mt-4">
+              <!-- Постер превью -->
+              <div v-if="form.poster_url" class="poster-preview">
+                <img :src="form.poster_url" alt="Постер" @error="posterLoadError = true" @load="posterLoadError = false" />
+                <span v-if="posterLoadError" class="poster-error">❌ Не удалось загрузить изображение постера</span>
               </div>
 
-              <button class="add-link-btn" @click="newLinks.push({ label: '', url: '' })">
-                ＋ Добавить ссылку
-              </button>
+              <!-- Заметка -->
+              <div class="form-group">
+                <label class="form-label">Заметка</label>
+                <textarea v-model="form.notes" class="form-input form-textarea" rows="2" placeholder="Ваши личные впечатления..."></textarea>
+              </div>
+
+              <!-- Жанры -->
+              <div class="form-group">
+                <label class="form-label">Жанры</label>
+
+                <!-- Текущие жанры -->
+                <div class="genres-list flex flex-wrap gap-2 mb-1" v-if="form.genres && form.genres.length > 0">
+                  <span v-for="g in form.genres" :key="g.name" class="genre-pill">
+                    {{ g.name }}
+                    <button type="button" class="genre-del-btn" @click="removeGenre(g)">×</button>
+                  </span>
+                </div>
+
+                <!-- Быстрые жанры -->
+                <div class="quick-genres flex flex-wrap gap-1 mb-2">
+                  <button
+                    v-for="gName in availableQuickGenres"
+                    :key="gName"
+                    type="button"
+                    class="quick-genre-btn"
+                    :class="{ active: form.genres.some(g => g.name.toLowerCase() === gName.toLowerCase()) }"
+                    @click="toggleQuickGenre(gName)"
+                  >
+                    {{ gName }}
+                  </button>
+                </div>
+
+                <!-- Свой жанр -->
+                <div class="flex gap-2">
+                  <input
+                    v-model="newGenreName"
+                    type="text"
+                    class="form-input"
+                    placeholder="Свой жанр..."
+                    @keydown.enter.prevent="addGenre(newGenreName)"
+                  />
+                  <button type="button" class="btn btn-ghost" style="padding: 9px 16px;" @click="addGenre(newGenreName)">＋</button>
+                </div>
+              </div>
+
+              <!-- Ссылки -->
+              <div class="form-group">
+                <label class="form-label">Ссылки</label>
+
+                <!-- Список существующих ссылок (при редактировании) -->
+                <div v-if="isEditing && editingReview?.links?.length > 0" class="existing-links">
+                  <div v-for="link in editingReview.links" :key="link.id" class="existing-link">
+                    <div class="link-info">
+                      <span class="link-label-text">{{ link.label || '—' }}</span>
+                      <a :href="link.url" target="_blank" class="link-url-text" rel="noopener">{{ truncUrl(link.url) }}</a>
+                    </div>
+                    <button class="link-del-btn" @click="handleDeleteLink(link.id)" title="Удалить">✕</button>
+                  </div>
+                </div>
+
+                <!-- Добавить новую ссылку -->
+                <div v-for="(nl, i) in newLinks" :key="i" class="new-link-row">
+                  <input v-model="nl.label" type="text" class="form-input link-label-input" placeholder="Kinopoisk / IMDB..." />
+                  <input v-model="nl.url" type="url" class="form-input link-url-input" placeholder="https://..." />
+                  <button class="link-del-btn" @click="newLinks.splice(i, 1)">✕</button>
+                </div>
+
+                <button class="add-link-btn" @click="newLinks.push({ label: '', url: '' })">
+                  ＋ Добавить ссылку
+                </button>
+              </div>
             </div>
             </template>
           </div>
@@ -513,6 +649,11 @@ async function syncWithShikimori() {
 
 const loadedImages = ref({})
 const isLoadingMore = ref(false)
+const viewMode = ref(localStorage.getItem('reviews-view-mode') || 'grid')
+function toggleViewMode(mode) {
+  viewMode.value = mode
+  localStorage.setItem('reviews-view-mode', mode)
+}
 
 // Observer и пагинация будут настроены ниже, после инициализации currentReviews
 
@@ -1082,29 +1223,6 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   background: var(--bg-base);
 }
 
-.rv-body {
-  flex: 1;
-  padding: 24px;
-}
-
-.btn-increment-ep {
-  background: rgba(192, 133, 82, 0.12);
-  border: 1px solid rgba(192, 133, 82, 0.3);
-  color: var(--primary);
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 4px;
-  transition: all 0.15s;
-}
-.btn-increment-ep:hover {
-  background: var(--primary);
-  color: var(--latte-foam);
-  border-color: var(--primary);
-}
-
 /* ══ Навбар ══ */
 .rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); transition: background-color 0.3s; }
 .rv-nav-inner { padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; }
@@ -1119,13 +1237,46 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 .add-btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px var(--primary-glow); }
 
-/* ══ Табы ══ */
+.badge-invites-count {
+  background: var(--dusty-rose);
+  color: var(--latte-foam);
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-link-toggle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+.nav-link-toggle:hover {
+  color: var(--text-primary);
+  background: var(--btn-ghost-hover-bg);
+}
+.nav-link-toggle.active {
+  color: var(--text-primary);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* ══ Табы статусов ══ */
 .status-tabs {
   display: flex;
   gap: 6px;
-  padding: 12px 24px;
+  padding: 8px 24px;
   border-bottom: 1px solid var(--border);
-  background: var(--glass-bg);
+  background: var(--bg-surface);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1146,7 +1297,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   color: var(--text-primary);
 }
 .status-tab.active {
-  background: var(--bg-surface);
+  background: var(--bg-base);
   border-color: var(--primary);
   color: var(--primary);
   font-weight: 700;
@@ -1160,18 +1311,223 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   min-width: 22px; text-align: center;
 }
 
-/* ══ Тело ══ */
-.empty-state {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  min-height: 320px; text-align: center;
+/* ══ Сплит-панели ══ */
+.catalog-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  align-items: start;
+}
+
+/* Сайдбар */
+.sidebar-filters {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input {
+  padding: 9px 12px 9px 32px !important;
+  font-size: 13px;
+}
+
+.search-indicator-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
   color: var(--text-muted);
 }
 
-/* ══ Карточки ══ */
+/* Фильтры в сайдбаре */
+.stack-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stack-filter-btn {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.stack-filter-btn:hover {
+  background: var(--btn-ghost-hover-bg);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.stack-filter-btn.active {
+  background: rgba(192, 133, 82, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.source-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.source-btn {
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.source-btn:hover {
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.source-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--latte-foam);
+}
+
+.genres-multiselect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-h: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.genre-select-badge {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.genre-select-badge:hover {
+  background: var(--btn-ghost-hover-bg);
+  color: var(--text-primary);
+}
+
+.genre-select-badge.active {
+  background: rgba(192, 133, 82, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Правый фид каталога */
+.catalog-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feed-header {
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.feed-count-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--latte-foam);
+  background: var(--primary);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-right: 8px;
+}
+
+.feed-count-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.view-mode-toggle {
+  display: flex;
+  background: var(--btn-ghost-bg);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn.active {
+  background: var(--bg-surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ══ Сетка карточек (Grid Mode) ══ */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px;
 }
 
@@ -1190,13 +1546,11 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   box-shadow: var(--shadow-lg);
 }
 
-/* Постер */
 .card-poster {
   width: 100%;
-  padding-bottom: 145%; /* соотношение ~2:3 */
+  padding-bottom: 140%;
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--bg-base);
 }
 
@@ -1221,481 +1575,615 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 .card-poster-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(59, 42, 32, 0.9) 0%, transparent 50%);
+  background: linear-gradient(to top, rgba(20, 16, 13, 0.95) 0%, transparent 60%);
   pointer-events: none;
 }
+
 .card-type-badge {
-  position: relative; z-index: 1;
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 20px;
-  font-size: 11px; font-weight: 700; color: var(--latte-foam);
-  align-self: flex-start;
-}
-.card-rating {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(59, 42, 32, 0.85);
-  backdrop-filter: blur(8px);
-  padding: 4px 8px;
-  border-radius: 8px;
-  color: var(--latte-foam);
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 13px;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
   font-weight: 700;
-  border: 1px solid var(--border);
+  color: var(--latte-foam);
   box-shadow: var(--shadow-sm);
 }
 
 .shikimori-badge {
   position: absolute;
   bottom: 8px;
-  left: 8px;
-  background: rgba(59, 42, 32, 0.85);
+  right: 8px;
+  background: rgba(31, 24, 19, 0.85);
   backdrop-filter: blur(4px);
   padding: 3px 6px;
   border-radius: 4px;
   color: var(--latte-foam);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   border: 1px solid var(--border);
 }
 
-/* Информация */
-.card-info { padding: 12px 14px 14px; }
+.card-rating {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(31, 24, 19, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--latte-foam);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.rating-star { color: var(--primary); }
+.rating-max { color: var(--text-muted); font-size: 9px; }
+
+.card-info {
+  padding: 12px;
+}
+
 .card-title {
-  font-family: var(--font-sans);
-  font-size: 14.5px; font-weight: 700; color: var(--text-primary);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; line-height: 1.4; margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
-.card-notes {
-  font-size: 12px; color: var(--text-muted);
-  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
-  overflow: hidden; margin-bottom: 8px;
+
+.card-genres {
+  margin: 6px 0;
 }
-.card-links { display: flex; flex-wrap: wrap; gap: 5px; }
-.link-pill {
-  font-size: 11px; font-weight: 600;
-  padding: 3px 9px; border-radius: 20px;
+
+.card-genre-pill {
+  font-size: 9px;
+  font-weight: 600;
   background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
-  color: var(--text-secondary); text-decoration: none;
-  transition: all 0.15s;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: 4px;
 }
-.link-pill:hover { background: rgba(192, 133, 82, 0.2); color: var(--text-primary); border-color: var(--primary); }
+
+.card-notes {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  background: var(--form-bg);
+  border-radius: 6px;
+  padding: 6px 8px;
+  line-height: 1.4;
+  border-left: 2px solid var(--primary);
+  margin-top: 6px;
+}
+
+.card-links {
+  margin-top: 10px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.link-pill {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-pill:hover {
+  background: var(--btn-ghost-hover-bg);
+  color: var(--primary);
+  border-color: var(--primary);
+}
 
 .watch-together-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--radius-md, 8px);
-  background: linear-gradient(135deg, rgba(192, 133, 82, 0.15) 0%, rgba(169, 103, 59, 0.15) 100%);
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(192, 133, 82, 0.12) 0%, rgba(169, 103, 59, 0.12) 100%);
   color: var(--primary);
   border: 1px solid rgba(192, 133, 82, 0.35);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+  width: 100%;
 }
 .watch-together-btn:hover {
   background: linear-gradient(135deg, rgba(192, 133, 82, 0.25) 0%, rgba(169, 103, 59, 0.25) 100%);
   border-color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--primary-glow);
-}
-.watch-together-btn:active {
-  transform: translateY(0);
 }
 
-/* ══ Модал ══ */
+.btn-increment-ep {
+  background: rgba(192, 133, 82, 0.12);
+  border: 1px solid rgba(192, 133, 82, 0.3);
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-increment-ep:hover {
+  background: var(--primary);
+  color: var(--latte-foam);
+}
+
+/* ══ Список строк (List Mode) ══ */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.list-row:hover {
+  transform: translateX(4px);
+  border-color: var(--border-hover);
+}
+
+.list-poster-thumbnail {
+  width: 44px;
+  height: 60px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-type-badge {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.list-shiki-badge {
+  font-size: 10px;
+  background: rgba(31, 24, 19, 0.08);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.list-notes-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-genre-badge {
+  font-size: 9px;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.list-stats-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.list-rating {
+  font-size: 13px;
+}
+
+.list-episodes {
+  width: 110px;
+}
+
+.list-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.list-progress-fill {
+  height: 100%;
+  background: var(--primary);
+}
+
+.list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.list-inc-btn {
+  background: rgba(192, 133, 82, 0.12);
+  border: 1px solid rgba(192, 133, 82, 0.3);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.list-inc-btn:hover {
+  background: var(--primary);
+  color: var(--latte-foam);
+}
+
+/* ══ Модалки ══ */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(59, 42, 32, 0.55); backdrop-filter: blur(10px);
+  background: rgba(20, 16, 13, 0.65); backdrop-filter: blur(12px);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 20px;
 }
+
 .modal-box {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  width: 100%; max-width: 520px;
+  width: 100%; max-width: 600px;
   max-height: 90vh;
   display: flex; flex-direction: column;
   overflow: hidden;
 }
+
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 22px 14px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+
 .modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); }
+
 .modal-close {
-  width: 30px; height: 30px; border-radius: 50%;
+  width: 32px; height: 32px; border-radius: 50%;
   background: var(--btn-ghost-bg); border: 1px solid var(--border);
-  color: var(--text-secondary); cursor: pointer; font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); font-size: 14px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
 .modal-close:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); border-color: var(--border-hover); }
 
 .modal-body {
-  overflow-y: auto; padding: 18px 22px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.modal-body::-webkit-scrollbar { width: 4px; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-.modal-footer {
-  display: flex; align-items: center;
-  padding: 14px 22px;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
+  flex: 1; overflow-y: auto; padding: 24px;
 }
 
-/* Форма */
-.form-group { display: flex; flex-direction: column; gap: 7px; }
-.form-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-.form-input, .form-textarea {
-  background: var(--form-bg); border: 1px solid var(--border);
-  border-radius: var(--radius-md); color: var(--text-primary);
-  font-size: 14px; padding: 9px 12px; outline: none;
-  transition: all 0.2s; font-family: inherit; width: 100%;
-}
-.form-input:focus, .form-textarea:focus { border-color: var(--primary); background: var(--form-focus-bg); box-shadow: 0 0 0 3px rgba(192, 133, 82, 0.15); }
-.form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); }
-.form-textarea { resize: vertical; min-height: 60px; }
-
-/* Тип контента */
-.type-selector { display: flex; gap: 8px; }
+.type-selector { display: flex; gap: 6px; }
 .type-btn {
-  flex: 1; padding: 9px 6px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: var(--btn-ghost-bg);
+  flex: 1; padding: 8px; border-radius: var(--radius-md);
+  background: var(--btn-ghost-bg); border: 1px solid var(--border);
   color: var(--text-secondary); cursor: pointer; font-size: 13px;
-  transition: all 0.15s; text-align: center;
+  transition: all 0.2s;
 }
 .type-btn:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
-.type-btn.active { border-color: var(--primary); background: rgba(192, 133, 82, 0.15); color: var(--primary); font-weight: 600; }
+.type-btn.active {
+  background: rgba(192, 133, 82, 0.15); border-color: var(--primary);
+  color: var(--primary); font-weight: 600;
+}
 
-/* Статус */
-.status-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.status-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 4px;
+}
+
 .status-opt {
-  padding: 8px 10px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: var(--btn-ghost-bg);
-  color: var(--text-secondary); cursor: pointer; font-size: 12px;
-  transition: all 0.15s;
-}
-.status-opt:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
-.status-opt.active { font-weight: 600; color: var(--text-primary); }
-
-/* Рейтинг */
-.rating-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.rating-btn {
-  width: 32px; height: 32px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: var(--btn-ghost-bg);
-  color: var(--text-secondary); cursor: pointer; font-size: 13px;
-  font-weight: 600; transition: all 0.15s;
-}
-.rating-btn:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
-.rating-btn.active { background: rgba(192, 133, 82, 0.15); border-color: var(--primary); color: var(--primary); }
-.rating-btn.active.high { background: rgba(124, 154, 110, 0.2); border-color: rgba(124, 154, 110, 0.5); color: var(--matcha); }
-.rating-btn.active.mid  { background: rgba(192, 133, 82, 0.2); border-color: rgba(192, 133, 82, 0.5); color: var(--caramel); }
-.rating-btn.active.low  { background: rgba(201, 112, 100, 0.2); border-color: rgba(201, 112, 100, 0.5); color: var(--dusty-rose); }
-.clear-btn { font-size: 11px; color: var(--dusty-rose); border-color: rgba(201, 112, 100, 0.3); }
-
-/* Постер превью */
-.poster-preview {
-  margin-top: 6px;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 600;
   border-radius: var(--radius-md);
-  overflow: hidden;
-  max-height: 180px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--form-bg); border: 1px solid var(--border);
-}
-.poster-preview img { max-height: 180px; object-fit: contain; width: 100%; }
-.poster-error { font-size: 12px; color: var(--dusty-rose); padding: 12px; }
-
-/* Существующие ссылки */
-.existing-links { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
-.existing-link {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--form-bg); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 7px 10px; gap: 8px;
-}
-.link-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.link-label-text { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.link-url-text {
-  font-size: 11px; color: var(--primary); text-decoration: none;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.link-url-text:hover { text-decoration: underline; }
-
-/* Новые ссылки */
-.new-link-row {
-  display: grid; grid-template-columns: 1fr 2fr 28px; gap: 6px;
-  align-items: center; margin-bottom: 6px;
-}
-.link-label-input, .link-url-input { font-size: 13px; padding: 7px 10px; }
-.link-del-btn {
-  width: 28px; height: 28px; border-radius: var(--radius-md);
-  background: rgba(201, 112, 100, 0.1); border: 1px solid rgba(201, 112, 100, 0.3);
-  color: var(--dusty-rose); cursor: pointer; font-size: 12px;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s; flex-shrink: 0;
-}
-.link-del-btn:hover { background: rgba(201, 112, 100, 0.2); }
-
-.add-link-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 12px; border-radius: var(--radius-md);
-  border: 1px dashed var(--border); background: transparent;
-  color: var(--text-muted); cursor: pointer; font-size: 13px;
-  transition: all 0.15s; width: 100%; justify-content: center;
-}
-.add-link-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--form-focus-bg); }
-
-/* Фильтры и поиск */
-.filter-panel {
-  margin: 12px 24px 0 24px;
-  padding: 14px 20px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--glass-bg);
-}
-.radio-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.radio-label input {
-  accent-color: var(--primary);
-}
-.filter-genre-btn {
   background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
-  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.status-opt:hover {
+  background: var(--btn-ghost-hover-bg);
+}
+
+.rating-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rating-btn {
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-sm);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.filter-genre-btn:hover {
-  background: var(--btn-ghost-hover-bg);
-  color: var(--text-primary);
-}
-.filter-genre-btn.active {
-  background: rgba(192, 133, 82, 0.15);
+
+.rating-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
-  font-weight: 600;
-}
-.reset-filters-btn {
-  color: var(--dusty-rose);
-  border-color: rgba(201, 112, 100, 0.2);
-}
-.reset-filters-btn:hover {
-  background: rgba(201, 112, 100, 0.08);
-  color: var(--dusty-rose);
 }
 
-/* Жанры на карточке */
-.card-genre-pill {
-  font-size: 10px;
-  background: var(--btn-ghost-bg);
+.rating-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--latte-foam);
+}
+
+.rating-btn.clear-btn {
+  background: transparent;
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  display: inline-block;
+  color: var(--dusty-rose);
+}
+.rating-btn.clear-btn:hover {
+  background: rgba(201, 112, 100, 0.1);
 }
 
-/* Жанры в модале */
+.poster-preview {
+  margin-top: 10px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 200px;
+  display: flex;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+}
+
+.poster-preview img {
+  height: 100%;
+  object-fit: contain;
+}
+
+.poster-error {
+  padding: 20px;
+  font-size: 12px;
+  color: var(--dusty-rose);
+}
+
+.form-textarea {
+  resize: vertical;
+}
+
 .genre-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
   background: rgba(192, 133, 82, 0.1);
   border: 1px solid rgba(192, 133, 82, 0.2);
   color: var(--primary);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 500;
 }
+
 .genre-del-btn {
   background: transparent;
   border: none;
   color: var(--dusty-rose);
+  font-size: 13px;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: bold;
-  opacity: 0.8;
+  padding: 0;
 }
-.genre-del-btn:hover {
-  opacity: 1;
-}
+
 .quick-genre-btn {
   background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
-  color: var(--text-secondary);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s;
 }
+
 .quick-genre-btn:hover {
   background: var(--btn-ghost-hover-bg);
-  color: var(--text-primary);
 }
+
 .quick-genre-btn.active {
-  background: rgba(192, 133, 82, 0.15);
+  background: var(--primary);
+  color: var(--latte-foam);
   border-color: var(--primary);
+}
+
+.existing-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.existing-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--form-bg);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.link-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.link-label-text {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--primary);
 }
 
-.nav-link-toggle {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  padding: 6px 12px;
-  border-radius: var(--radius-md);
-  transition: all 0.2s;
-}
-.nav-link-toggle:hover {
-  color: var(--text-primary);
-  background: var(--btn-ghost-hover-bg);
-}
-.nav-link-toggle.active {
-  color: var(--text-primary);
-  background: var(--btn-ghost-bg);
-  border: 1px solid var(--border);
-  font-weight: 600;
-}
-.badge-invites-count {
-  background: var(--dusty-rose);
-  color: var(--latte-foam);
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ══ Адаптив ══ */
-@media (max-width: 600px) {
-  .card-grid { grid-template-columns: 1fr 1fr; }
-  .status-tabs { padding: 10px 12px; }
-  .rv-body { padding: 16px 12px; }
-  .modal-box { max-width: 100%; max-height: 95vh; }
-  .type-selector { flex-direction: column; }
-  .new-link-row { grid-template-columns: 1fr; }
-}
-
-/* ══ Modern Pills ══ */
-.modern-pills {
-  display: inline-flex;
-  background: var(--form-bg);
-  border: 1px solid var(--border);
-  border-radius: 9999px;
-  padding: 3px;
-}
-.pill-btn {
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 600;
+.link-url-text {
+  font-size: 12px;
   color: var(--text-secondary);
-  transition: all 0.2s ease;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-.pill-btn:hover {
-  color: var(--text-primary);
-}
-.pill-btn.active {
-  background: var(--primary);
-  color: var(--latte-foam);
-  box-shadow: 0 2px 8px var(--primary-glow);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Shikimori Filter */
-.shikimori-filter {
-  display: flex;
-  background: var(--form-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 4px;
-}
-.shikimori-btn {
+.link-del-btn {
   background: transparent;
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.link-del-btn:hover {
+  color: var(--dusty-rose);
+}
+
+.new-link-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.add-link-btn {
+  background: var(--btn-ghost-bg);
+  border: 1px dashed var(--border);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px;
+  width: 100%;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-}
-.shikimori-btn:hover {
-  background: var(--btn-ghost-hover-bg);
-  opacity: 0.9;
-}
-.shikimori-btn.active {
-  background: var(--btn-ghost-bg);
-  border: 1px solid var(--border);
-  opacity: 1;
-}
-.shiki-icon {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--text-primary);
-  border-radius: 3px;
-}
-.shiki-full {
-  background: var(--text-primary);
-}
-.shiki-empty {
-  background: transparent;
-}
-.shiki-half {
-  background: linear-gradient(135deg, var(--text-primary) 50%, transparent 50%);
 }
 
-.btn-sync {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s;
+.add-link-btn:hover {
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
 }
-.btn-sync.is-syncing {
-  border-color: rgba(192, 133, 82, 0.5);
-  background: rgba(192, 133, 82, 0.05);
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
-.sync-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  background: var(--primary);
-  transition: width 0.4s ease-out;
-  border-radius: 0 2px 0 0;
+
+.confirm-box {
+  width: 100%; max-width: 380px; padding: 24px;
+  border-radius: var(--radius-lg); text-align: center;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ══ Анимации модалок ══ */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-enter-active .modal-box,
+.modal-enter-active .confirm-box,
+.modal-leave-active .modal-box,
+.modal-leave-active .confirm-box {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.modal-enter-from {
+  opacity: 0;
+}
+.modal-enter-from .modal-box,
+.modal-enter-from .confirm-box {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-leave-to .modal-box,
+.modal-leave-to .confirm-box {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Адаптив */
+@media (max-width: 992px) {
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

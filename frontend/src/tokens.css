@@ -5,12 +5,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Raw Color Palette */
+  /* Raw Color Palette (User Defined Theme Schema) */
   --latte-foam:     #FFF8F0;  /* Base background (light mode), "пенка" */
-  --cream:          #F1E4D3;  /* Card backgrounds, secondary surfaces */
-  --espresso:       #3B2A20;  /* Base background (dark mode), primary text (light) */
-  --mocha:          #6B4A36;  /* Secondary text, borders, icons */
-  --caramel:        #C08552;  /* Primary accent (buttons, links, active tabs) */
+  --cream:          #F1E4D3;  /* Card backgrounds, secondary surfaces (light mode) */
+  --obsidian:       #14100D;  /* Base background (dark mode) — warm-toned dark black */
+  --espresso:       #1F1813;  /* Cards/surfaces second-level in dark theme (slightly lighter than obsidian) */
+  --mocha:          #6B4A36;  /* Secondary text, borders, icons (both modes) */
+  --caramel:        #C08552;  /* Main accent (buttons, links, active tabs) */
   --cinnamon:       #A9673B;  /* Hover/pressed state of accent */
   --matcha:         #7C9A6E;  /* Success / positive statuses */
   --dusty-rose:     #C97064;  /* Error / warning statuses */
@@ -20,30 +21,30 @@
   --font-sans:      'Inter', 'Manrope', system-ui, -apple-system, sans-serif;
   --font-mono:      'JetBrains Mono', 'IBM Plex Mono', monospace;
 
-  /* Theme Mapping — DEFAULT: Espresso (Dark Warm Mode) */
-  --bg-base:        var(--espresso);
-  --bg-surface:     #2E2018; /* Rich deep espresso */
-  --bg-elevated:    #443227; /* Lighter warm espresso */
+  /* Theme Mapping — DEFAULT: Espresso (Dark Warm Mode on Obsidian) */
+  --bg-base:        var(--obsidian);
+  --bg-surface:     var(--espresso); 
+  --bg-elevated:    #2C211A; /* Slightly lighter warm espresso */
 
   --primary:        var(--caramel);
   --primary-hover:  var(--cinnamon);
   --primary-glow:   rgba(192, 133, 82, 0.25);
 
-  --border:         rgba(241, 228, 211, 0.12); /* cream-tinted border */
-  --border-hover:   rgba(192, 133, 82, 0.4);
+  --border:         rgba(107, 74, 54, 0.22); /* mocha-tinted subtle border */
+  --border-hover:   rgba(192, 133, 82, 0.45);
 
   --text-primary:   var(--latte-foam);
   --text-secondary: var(--cream);
-  --text-muted:     #A3907F; /* Warm taupe */
+  --text-muted:     #8C7464; /* Warm taupe */
 
-  --glass-bg:       rgba(241, 228, 211, 0.03);
+  --glass-bg:       rgba(31, 24, 19, 0.45);
   --glass-hover-bg: rgba(192, 133, 82, 0.08);
 
-  --btn-ghost-bg:       rgba(241, 228, 211, 0.05);
-  --btn-ghost-hover-bg: rgba(241, 228, 211, 0.08);
-  --btn-ghost-border:   rgba(241, 228, 211, 0.15);
+  --btn-ghost-bg:       rgba(107, 74, 54, 0.12);
+  --btn-ghost-hover-bg: rgba(107, 74, 54, 0.2);
+  --btn-ghost-border:   rgba(107, 74, 54, 0.3);
 
-  --form-bg:            rgba(241, 228, 211, 0.04);
+  --form-bg:            rgba(107, 74, 54, 0.08);
   --form-focus-bg:      rgba(192, 133, 82, 0.06);
 
   /* Radius Tokens */
@@ -53,21 +54,22 @@
   --radius-xl:  24px;
 
   /* Shadows with warm brown tints */
-  --shadow-sm:  0 1px 2px rgba(59, 42, 32, 0.2);
-  --shadow-md:  0 4px 12px rgba(59, 42, 32, 0.15), 0 2px 4px rgba(59, 42, 32, 0.1);
-  --shadow-lg:  0 12px 24px rgba(59, 42, 32, 0.2), 0 4px 8px rgba(59, 42, 32, 0.15);
-  --shadow-xl:  0 20px 40px rgba(59, 42, 32, 0.3), 0 8px 16px rgba(59, 42, 32, 0.2);
+  --shadow-sm:  0 1px 3px rgba(20, 16, 13, 0.35);
+  --shadow-md:  0 4px 14px rgba(20, 16, 13, 0.3), 0 2px 5px rgba(20, 16, 13, 0.2);
+  --shadow-lg:  0 12px 28px rgba(20, 16, 13, 0.4), 0 4px 10px rgba(20, 16, 13, 0.3);
+  --shadow-xl:  0 20px 48px rgba(20, 16, 13, 0.5), 0 8px 20px rgba(20, 16, 13, 0.4);
 
   /* Scrollbar variables */
   --scrollbar-thumb: var(--mocha);
-  --scrollbar-track: var(--espresso);
+  --scrollbar-track: var(--obsidian);
 }
 
 [data-theme='latte'] {
   /* Theme Mapping — LIGHT: Latte (Soft Cream Mode) */
   --bg-base:        var(--latte-foam);
   --bg-surface:     var(--cream);
-  --bg-elevated:    #E8D9C5; /* Blended cream and light mocha */
+  --bg-elevated:    #E9DC CA; /* Blended cream and light mocha */
+  --bg-elevated:    #EADBCE;
 
   --primary:        var(--caramel);
   --primary-hover:  var(--cinnamon);
@@ -76,18 +78,18 @@
   --border:         rgba(107, 74, 54, 0.15); /* mocha-tinted border */
   --border-hover:   rgba(192, 133, 82, 0.4);
 
-  --text-primary:   var(--espresso);
+  --text-primary:   var(--obsidian);
   --text-secondary: var(--mocha);
   --text-muted:     #8E705C; /* Darker warm taupe */
 
-  --glass-bg:       rgba(107, 74, 54, 0.03);
+  --glass-bg:       rgba(107, 74, 54, 0.04);
   --glass-hover-bg: rgba(192, 133, 82, 0.05);
 
-  --btn-ghost-bg:       rgba(107, 74, 54, 0.04);
-  --btn-ghost-hover-bg: rgba(107, 74, 54, 0.08);
-  --btn-ghost-border:   rgba(107, 74, 54, 0.15);
+  --btn-ghost-bg:       rgba(107, 74, 54, 0.05);
+  --btn-ghost-hover-bg: rgba(107, 74, 54, 0.1);
+  --btn-ghost-border:   rgba(107, 74, 54, 0.2);
 
-  --form-bg:            rgba(107, 74, 54, 0.03);
+  --form-bg:            rgba(107, 74, 54, 0.04);
   --form-focus-bg:      rgba(192, 133, 82, 0.04);
 
   /* Shadows for light mode */
