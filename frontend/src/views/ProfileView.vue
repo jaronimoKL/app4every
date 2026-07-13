@@ -5,37 +5,13 @@
     <div class="profile-settings-layout">
       
       <!-- Сайдбар настроек -->
-      <aside class="profile-sidebar" :class="{ expanded: isSidebarExpanded }">
-        
-        <!-- Кнопка сворачивания/разворачивания (только на десктопе) -->
-        <button class="sidebar-toggle-btn hidden md:flex" @click="isSidebarExpanded = !isSidebarExpanded" title="Развернуть/Свернуть">
-          <span class="burger-icon">☰</span>
-        </button>
-
-        <!-- Кнопка закрытия для мобильных -->
-        <button class="sidebar-toggle-btn md:hidden" @click="isSidebarExpanded = false" title="Закрыть меню">
-          <span class="burger-icon">✕</span>
-        </button>
-
-        <nav class="sidebar-nav">
-          <button 
-            v-for="item in menuItems" 
-            :key="item.key"
-            class="sidebar-item-btn" 
-            :class="{ active: activeSection === item.key }"
-            @click="activeSection = item.key; isSidebarExpanded = false"
-            :title="!isSidebarExpanded ? item.title : ''"
-          >
-            <span class="sidebar-icon">{{ item.icon }}</span>
-            <span class="sidebar-label" v-if="isSidebarExpanded">{{ item.title }}</span>
-            
-            <!-- Badge for friends requests count -->
-            <span v-if="item.key === 'friends' && requests.length > 0" class="sidebar-badge">
-              {{ requests.length }}
-            </span>
-          </button>
-        </nav>
-      </aside>
+      <AppSidebar
+        :items="profileMenuItems"
+        v-model="activeSection"
+        v-model:expanded="isSidebarExpanded"
+        :collapsible="true"
+        :is-local="true"
+      />
 
       <!-- Оверлей для мобильного сайдбара -->
       <div v-if="isSidebarExpanded" class="sidebar-overlay" @click="isSidebarExpanded = false"></div>
@@ -425,8 +401,11 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { friendsApi } from '@/services/api'
+import { useSidebarStore } from '@/stores/sidebar'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const auth = useAuthStore()
+const sidebarStore = useSidebarStore()
 
 const userInitial = computed(() =>
   (auth.user?.username || auth.user?.email || '?').charAt(0).toUpperCase()
@@ -434,14 +413,15 @@ const userInitial = computed(() =>
 
 // ── Навигация настроек ──
 const activeSection = ref('profile')
-const isSidebarExpanded = ref(true)
-const menuItems = [
+const isSidebarExpanded = ref(window.innerWidth > 768)
+
+const profileMenuItems = computed(() => [
   { key: 'profile', title: 'Профиль', icon: '👤' },
   { key: 'security', title: 'Безопасность', icon: '🔒' },
-  { key: 'friends', title: 'Друзья', icon: '👥' },
+  { key: 'friends', title: 'Друзья', icon: '👥', badge: requests.value.length > 0 ? requests.value.length : null },
   { key: 'integrations', title: 'Интеграции', icon: '🔌' },
   { key: 'invites', title: 'Инвайты', icon: '🎟️' },
-]
+])
 
 // ── Форма профиля ──
 const profileForm = reactive({
@@ -475,6 +455,9 @@ const inviteLoading = ref(false)
 const shikimoriNickname = ref('')
 
 onMounted(async () => {
+  // Ensure the global navigation sidebar is collapsed to vertical rail while on profile
+  sidebarStore.collapseGlobal()
+
   if (auth.user) {
     profileForm.username = auth.user.username || ''
     profileForm.email = auth.user.email || ''
@@ -709,7 +692,7 @@ function showFriendsMsg(text, type) {
 
 <style scoped>
 .profile-page {
-  min-height: calc(100vh - 110px);
+  min-height: 100vh;
   background: var(--bg-base);
   padding: 24px 24px 80px 24px;
 }
@@ -721,109 +704,6 @@ function showFriendsMsg(text, type) {
   gap: 32px;
   position: relative;
   align-items: start;
-}
-
-/* ── Сайдбар ── */
-.profile-sidebar {
-  width: 64px;
-  flex-shrink: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow: hidden;
-}
-
-.profile-sidebar.expanded {
-  width: 240px;
-}
-
-.sidebar-toggle-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 18px;
-  cursor: pointer;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  align-self: flex-start;
-  width: 44px;
-  height: 44px;
-  transition: all 0.2s;
-}
-.sidebar-toggle-btn:hover {
-  background: var(--btn-ghost-hover-bg);
-  color: var(--text-primary);
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sidebar-item-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  width: 100%;
-  text-align: left;
-  white-space: nowrap;
-  position: relative;
-}
-
-.sidebar-item-btn:hover {
-  background: var(--btn-ghost-hover-bg);
-  color: var(--text-primary);
-  border-color: var(--border);
-}
-
-.sidebar-item-btn.active {
-  background: var(--espresso);
-  color: var(--primary);
-  border-color: var(--primary);
-  font-weight: 700;
-}
-[data-theme='latte'] .sidebar-item-btn.active {
-  background: var(--cream);
-}
-
-.sidebar-icon {
-  font-size: 16px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.sidebar-label {
-  font-size: 13.5px;
-}
-
-.sidebar-badge {
-  background: var(--dusty-rose);
-  color: var(--latte-foam);
-  font-size: 9px;
-  font-weight: 700;
-  border-radius: 20px;
-  padding: 1px 6px;
-  margin-left: auto;
 }
 
 /* ── Главная область настроек ── */
@@ -1153,23 +1033,6 @@ function showFriendsMsg(text, type) {
 
 /* Адаптив */
 @media (max-width: 768px) {
-  .profile-sidebar {
-    position: fixed;
-    left: -260px;
-    top: 0;
-    bottom: 0;
-    width: 240px;
-    z-index: 200;
-    border-radius: 0;
-    border-top: none;
-    border-bottom: none;
-    border-left: none;
-    background: var(--bg-surface);
-  }
-  .profile-sidebar.expanded {
-    left: 0;
-  }
-  
   .sidebar-overlay {
     display: block;
   }
