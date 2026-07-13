@@ -3,20 +3,25 @@
     
     <!-- TOP LOGO / BURGER CONTAINER -->
     <div class="sidebar-top-section">
-      <div v-if="!isLocal" class="logo-wrapper">
-        <RouterLink to="/dashboard" class="logo-pod-link">
+      <div v-if="!isLocal" class="logo-wrapper" @click="!isExpanded && (isExpanded = true)">
+        <component 
+          :is="isExpanded ? 'RouterLink' : 'div'" 
+          to="/dashboard" 
+          class="logo-pod-link"
+          :style="{ cursor: !isExpanded ? 'pointer' : 'inherit' }"
+        >
           <div class="logo-pod-box">
             <span class="logo-pod-text">A4E</span>
           </div>
           <span class="logo-brand-name" v-if="isExpanded">App4Every</span>
-        </RouterLink>
+        </component>
       </div>
 
-      <!-- Burger button -->
+      <!-- Burger button (Only visible if expanded, or if local where there's no logo) -->
       <button 
-        v-if="collapsible" 
+        v-if="collapsible && (isExpanded || isLocal)" 
         class="burger-btn" 
-        @click="isExpanded = !isExpanded" 
+        @click.stop="isExpanded = !isExpanded" 
         title="Свернуть/Развернуть"
       >
         <span class="burger-icon">{{ isExpanded && isLocal ? '✕' : '☰' }}</span>

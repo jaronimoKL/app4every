@@ -34,19 +34,21 @@
 
     <!-- ══ ТАБЫ СТАТУСОВ ══ -->
     <div class="status-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="status-tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        <span class="tab-icon">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
-        <span class="tab-count" :style="{ background: tab.countBg }">
-          {{ (store.byStatus[tab.key] || []).length }}
-        </span>
-      </button>
+      <div class="status-tabs-inner">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="status-tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+          <span class="tab-count" :style="{ background: tab.countBg }">
+            {{ (store.byStatus[tab.key] || []).length }}
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- ══ ОСНОВНОЙ КОНТЕНТ (SPLIT PANE CATALOG) ══ -->
@@ -1225,7 +1227,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 /* ══ Навбар ══ */
 .rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); transition: background-color 0.3s; }
-.rv-nav-inner { padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; }
+.rv-nav-inner { padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; width: 100%; }
 .nav-sep { width: 1px; height: 20px; background: var(--border); }
 .add-btn {
   display: flex; align-items: center; gap: 6px;
@@ -1272,13 +1274,18 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 /* ══ Табы статусов ══ */
 .status-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 8px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
   overflow-x: auto;
   scrollbar-width: none;
+}
+.status-tabs-inner {
+  display: flex;
+  gap: 6px;
+  padding: 8px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 .status-tabs::-webkit-scrollbar { display: none; }
 
