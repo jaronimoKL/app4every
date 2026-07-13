@@ -252,226 +252,229 @@
           </div>
         </div>
       </div>
+
       <!-- Триггер для подгрузки элементов при скролле -->
       <div ref="loadMoreTrigger" class="flex justify-center py-6" style="width: 100%;">
         <div v-if="isLoadingMore" class="spinner" style="width:32px;height:32px;"></div>
       </div>
-    </div>
+    </div>    <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
+    <Transition name="modal">
+      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-box glass" @click.stop>
 
-    <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать ══ -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-box glass" @click.stop>
-
-        <!-- Заголовок модала -->
-        <div class="modal-header">
-          <h2 class="modal-title">{{ isEditing ? 'Редактировать' : 'Добавить' }}</h2>
-          <button class="modal-close" @click="closeModal">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <AnimeSearchStep 
-            v-if="showAnimeSearch"
-            @select="handleAnimeSelect"
-            @skip="showAnimeSearch = false"
-          />
-          <MovieSearchStep
-            v-else-if="showMovieSearch"
-            @select="handleMovieSelect"
-            @skip="showMovieSearch = false"
-          />
-          <template v-else>
-
-          <!-- Тип контента -->
-          <div class="form-group">
-            <label class="form-label">Тип</label>
-            <div class="type-selector">
-              <button
-                v-for="t in contentTypes"
-                :key="t.value"
-                class="type-btn"
-                :class="{ active: form.content_type === t.value }"
-                @click="form.content_type = t.value"
-              >{{ t.icon }} {{ t.label }}</button>
-            </div>
+          <!-- Заголовок модала -->
+          <div class="modal-header">
+            <h2 class="modal-title">{{ isEditing ? 'Редактировать' : 'Добавить' }}</h2>
+            <button class="modal-close" @click="closeModal">✕</button>
           </div>
 
-          <!-- Кнопка поиска для контента (только при создании) -->
-          <div v-if="form.content_type === 'anime' && !isEditing" class="mb-4">
-            <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
-              🔍 Найти на Shikimori (Автозаполнение)
-            </button>
-          </div>
-          <div v-if="(form.content_type === 'movie' || form.content_type === 'series') && !isEditing" class="mb-4">
-            <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
-              🔍 Найти на TMDB (Автозаполнение)
-            </button>
-          </div>
+          <div class="modal-body">
+            <AnimeSearchStep 
+              v-if="showAnimeSearch"
+              @select="handleAnimeSelect"
+              @skip="showAnimeSearch = false"
+            />
+            <MovieSearchStep
+              v-else-if="showMovieSearch"
+              @select="handleMovieSelect"
+              @skip="showMovieSearch = false"
+            />
+            <template v-else>
 
-          <!-- Название -->
-          <div class="form-group">
-            <label class="form-label">Название <span style="color:#f87171">*</span></label>
-            <input v-model="form.title" type="text" class="form-input" placeholder="Введите название..." />
-          </div>
-
-          <!-- Статус -->
-          <div class="form-group">
-            <label class="form-label">Статус</label>
-            <div class="status-selector">
-              <button
-                v-for="s in statusOptions"
-                :key="s.value"
-                class="status-opt"
-                :class="{ active: form.status === s.value }"
-                :style="form.status === s.value ? { borderColor: s.color, background: s.color + '22' } : {}"
-                @click="form.status = s.value"
-              >{{ s.icon }} {{ s.label }}</button>
-            </div>
-          </div>
-
-          <!-- Оценка -->
-          <div class="form-group">
-            <label class="form-label">
-              Оценка
-              <span style="color:var(--text-muted);font-size:12px;margin-left:6px;">({{ form.rating ? form.rating + '/10' : 'не задана' }})</span>
-            </label>
-            <div class="rating-row">
-              <button
-                v-for="n in 10"
-                :key="n"
-                class="rating-btn"
-                :class="{ active: form.rating >= n, high: n >= 8, mid: n >= 5 && n < 8 }"
-                @click="form.rating = form.rating === n ? null : n"
-              >{{ n }}</button>
-              <button class="rating-btn clear-btn" v-if="form.rating" @click="form.rating = null" title="Сбросить">✕</button>
-            </div>
-          </div>
-
-          <!-- Постер URL -->
-          <div class="form-group">
-            <label class="form-label">URL постера <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
-            <input v-model="form.poster_url" type="url" class="form-input" placeholder="https://..." />
-            <div v-if="form.poster_url" class="poster-preview">
-              <img :src="form.poster_url" alt="Постер" @error="posterLoadError = true" @load="posterLoadError = false" />
-              <span v-if="posterLoadError" class="poster-error">❌ Не удалось загрузить изображение</span>
-            </div>
-          </div>
-
-          <!-- Прогресс просмотра (серии) -->
-          <div class="form-group" v-if="form.content_type !== 'movie'">
-            <label class="form-label">Прогресс серий</label>
-            <div class="flex items-center gap-2">
-              <input v-model.number="form.current_episode" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Текущая" />
-              <span class="text-gray-400">из</span>
-              <input v-model.number="form.episodes_total" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Всего" />
-            </div>
-          </div>
-
-          <!-- Заметка -->
-          <div class="form-group">
-            <label class="form-label">Заметка <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
-            <textarea v-model="form.notes" class="form-textarea" rows="2" placeholder="Впечатления, мысли..."></textarea>
-          </div>
-
-          <!-- Жанры -->
-          <div class="form-group">
-            <label class="form-label">Жанры</label>
-
-            <!-- Текущие жанры -->
-            <div class="genres-list flex flex-wrap gap-2 mb-1" v-if="form.genres && form.genres.length > 0">
-              <span v-for="g in form.genres" :key="g.name" class="genre-pill">
-                {{ g.name }}
-                <button type="button" class="genre-del-btn" @click="removeGenre(g)">×</button>
-              </span>
-            </div>
-
-            <!-- Быстрые жанры -->
-            <div class="quick-genres flex flex-wrap gap-1 mb-2">
-              <button
-                v-for="gName in availableQuickGenres"
-                :key="gName"
-                type="button"
-                class="quick-genre-btn"
-                :class="{ active: form.genres.some(g => g.name.toLowerCase() === gName.toLowerCase()) }"
-                @click="toggleQuickGenre(gName)"
-              >
-                {{ gName }}
-              </button>
-            </div>
-
-            <!-- Свой жанр -->
-            <div class="flex gap-2">
-              <input
-                v-model="newGenreName"
-                type="text"
-                class="form-input"
-                placeholder="Свой жанр..."
-                @keydown.enter.prevent="addGenre(newGenreName)"
-              />
-              <button type="button" class="btn btn-ghost" style="padding: 9px 16px;" @click="addGenre(newGenreName)">＋</button>
-            </div>
-          </div>
-
-          <!-- ── Ссылки ── -->
-          <div class="form-group">
-            <label class="form-label">Ссылки</label>
-
-            <!-- Список существующих ссылок (при редактировании) -->
-            <div v-if="isEditing && editingReview?.links?.length > 0" class="existing-links">
-              <div v-for="link in editingReview.links" :key="link.id" class="existing-link">
-                <div class="link-info">
-                  <span class="link-label-text">{{ link.label || '—' }}</span>
-                  <a :href="link.url" target="_blank" class="link-url-text" rel="noopener">{{ truncUrl(link.url) }}</a>
-                </div>
-                <button class="link-del-btn" @click="handleDeleteLink(link.id)" title="Удалить">✕</button>
+            <!-- Тип контента -->
+            <div class="form-group">
+              <label class="form-label">Тип</label>
+              <div class="type-selector">
+                <button
+                  v-for="t in contentTypes"
+                  :key="t.value"
+                  class="type-btn"
+                  :class="{ active: form.content_type === t.value }"
+                  @click="form.content_type = t.value"
+                >{{ t.icon }} {{ t.label }}</button>
               </div>
             </div>
 
-            <!-- Добавить новую ссылку -->
-            <div v-for="(nl, i) in newLinks" :key="i" class="new-link-row">
-              <input v-model="nl.label" type="text" class="form-input link-label-input" placeholder="Kinopoisk / IMDB..." />
-              <input v-model="nl.url" type="url" class="form-input link-url-input" placeholder="https://..." />
-              <button class="link-del-btn" @click="newLinks.splice(i, 1)">✕</button>
+            <!-- Кнопка поиска для контента (только при создании) -->
+            <div v-if="form.content_type === 'anime' && !isEditing" class="mb-4">
+              <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
+                🔍 Найти на Shikimori (Автозаполнение)
+              </button>
+            </div>
+            <div v-if="(form.content_type === 'movie' || form.content_type === 'series') && !isEditing" class="mb-4">
+              <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
+                🔍 Найти на TMDB (Автозаполнение)
+              </button>
             </div>
 
-            <button class="add-link-btn" @click="newLinks.push({ label: '', url: '' })">
-              ＋ Добавить ссылку
-            </button>
-          </div>
-          </template>
-        </div>
+            <!-- Название -->
+            <div class="form-group">
+              <label class="form-label">Название <span style="color:var(--dusty-rose)">*</span></label>
+              <input v-model="form.title" type="text" class="form-input" placeholder="Введите название..." />
+            </div>
 
-        <!-- Кнопки -->
-        <div class="modal-footer">
-          <button
-            v-if="isEditing"
-            class="btn btn-ghost"
-            style="color:#f87171;"
-            @click="handleDelete"
-          >🗑 Удалить</button>
-          <div class="flex items-center gap-3" style="margin-left:auto;">
-            <button class="btn btn-ghost" @click="closeModal">Отмена</button>
-            <button class="btn btn-primary" :disabled="!form.title.trim() || store.saving" @click="handleSave">
-              {{ store.saving ? 'Сохраняется...' : (isEditing ? 'Сохранить' : 'Добавить') }}
-            </button>
+            <!-- Статус -->
+            <div class="form-group">
+              <label class="form-label">Статус</label>
+              <div class="status-selector">
+                <button
+                  v-for="s in statusOptions"
+                  :key="s.value"
+                  class="status-opt"
+                  :class="{ active: form.status === s.value }"
+                  :style="form.status === s.value ? { borderColor: s.color, background: s.color + '22' } : {}"
+                  @click="form.status = s.value"
+                >{{ s.icon }} {{ s.label }}</button>
+              </div>
+            </div>
+
+            <!-- Оценка -->
+            <div class="form-group">
+              <label class="form-label">
+                Оценка
+                <span style="color:var(--text-muted);font-size:12px;margin-left:6px;">({{ form.rating ? form.rating + '/10' : 'не задана' }})</span>
+              </label>
+              <div class="rating-row">
+                <button
+                  v-for="n in 10"
+                  :key="n"
+                  class="rating-btn"
+                  :class="{ active: form.rating >= n, high: n >= 8, mid: n >= 5 && n < 8 }"
+                  @click="form.rating = form.rating === n ? null : n"
+                >{{ n }}</button>
+                <button class="rating-btn clear-btn" v-if="form.rating" @click="form.rating = null" title="Сбросить">✕</button>
+              </div>
+            </div>
+
+            <!-- Постер URL -->
+            <div class="form-group">
+              <label class="form-label">URL постера <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
+              <input v-model="form.poster_url" type="url" class="form-input" placeholder="https://..." />
+              <div v-if="form.poster_url" class="poster-preview">
+                <img :src="form.poster_url" alt="Постер" @error="posterLoadError = true" @load="posterLoadError = false" />
+                <span v-if="posterLoadError" class="poster-error">❌ Не удалось загрузить изображение</span>
+              </div>
+            </div>
+
+            <!-- Прогресс просмотра (серии) -->
+            <div class="form-group" v-if="form.content_type !== 'movie'">
+              <label class="form-label">Прогресс серий</label>
+              <div class="flex items-center gap-2">
+                <input v-model.number="form.current_episode" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Текущая" />
+                <span class="text-gray-400">из</span>
+                <input v-model.number="form.episodes_total" type="number" min="0" class="form-input text-center" style="width: 80px;" placeholder="Всего" />
+              </div>
+            </div>
+
+            <!-- Заметка -->
+            <div class="form-group">
+              <label class="form-label">Заметка <span style="color:var(--text-muted);font-size:12px;">(необязательно)</span></label>
+              <textarea v-model="form.notes" class="form-textarea" rows="2" placeholder="Впечатления, мысли..."></textarea>
+            </div>
+
+            <!-- Жанры -->
+            <div class="form-group">
+              <label class="form-label">Жанры</label>
+
+              <!-- Текущие жанры -->
+              <div class="genres-list flex flex-wrap gap-2 mb-1" v-if="form.genres && form.genres.length > 0">
+                <span v-for="g in form.genres" :key="g.name" class="genre-pill">
+                  {{ g.name }}
+                  <button type="button" class="genre-del-btn" @click="removeGenre(g)">×</button>
+                </span>
+              </div>
+
+              <!-- Быстрые жанры -->
+              <div class="quick-genres flex flex-wrap gap-1 mb-2">
+                <button
+                  v-for="gName in availableQuickGenres"
+                  :key="gName"
+                  type="button"
+                  class="quick-genre-btn"
+                  :class="{ active: form.genres.some(g => g.name.toLowerCase() === gName.toLowerCase()) }"
+                  @click="toggleQuickGenre(gName)"
+                >
+                  {{ gName }}
+                </button>
+              </div>
+
+              <!-- Свой жанр -->
+              <div class="flex gap-2">
+                <input
+                  v-model="newGenreName"
+                  type="text"
+                  class="form-input"
+                  placeholder="Свой жанр..."
+                  @keydown.enter.prevent="addGenre(newGenreName)"
+                />
+                <button type="button" class="btn btn-ghost" style="padding: 9px 16px;" @click="addGenre(newGenreName)">＋</button>
+              </div>
+            </div>
+
+            <!-- Ссылки -->
+            <div class="form-group">
+              <label class="form-label">Ссылки</label>
+
+              <!-- Список существующих ссылок (при редактировании) -->
+              <div v-if="isEditing && editingReview?.links?.length > 0" class="existing-links">
+                <div v-for="link in editingReview.links" :key="link.id" class="existing-link">
+                  <div class="link-info">
+                    <span class="link-label-text">{{ link.label || '—' }}</span>
+                    <a :href="link.url" target="_blank" class="link-url-text" rel="noopener">{{ truncUrl(link.url) }}</a>
+                  </div>
+                  <button class="link-del-btn" @click="handleDeleteLink(link.id)" title="Удалить">✕</button>
+                </div>
+              </div>
+
+              <!-- Добавить новую ссылку -->
+              <div v-for="(nl, i) in newLinks" :key="i" class="new-link-row">
+                <input v-model="nl.label" type="text" class="form-input link-label-input" placeholder="Kinopoisk / IMDB..." />
+                <input v-model="nl.url" type="url" class="form-input link-url-input" placeholder="https://..." />
+                <button class="link-del-btn" @click="newLinks.splice(i, 1)">✕</button>
+              </div>
+
+              <button class="add-link-btn" @click="newLinks.push({ label: '', url: '' })">
+                ＋ Добавить ссылку
+              </button>
+            </div>
+            </template>
+          </div>
+
+          <!-- Кнопки -->
+          <div class="modal-footer">
+            <button
+              v-if="isEditing"
+              class="btn btn-ghost"
+              style="color:var(--dusty-rose); border-color: rgba(201, 112, 100, 0.2);"
+              @click="handleDelete"
+            >🗑 Удалить</button>
+            <div class="flex items-center gap-3" style="margin-left:auto;">
+              <button class="btn btn-ghost" @click="closeModal">Отмена</button>
+              <button class="btn btn-primary" :disabled="!form.title.trim() || store.saving" @click="handleSave">
+                {{ store.saving ? 'Сохраняется...' : (isEditing ? 'Сохранить' : 'Добавить') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- Диалог подтверждения удаления -->
-    <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
-      <div class="confirm-box glass">
-        <div style="font-size:32px;margin-bottom:12px;">🗑</div>
-        <h3 style="font-weight:700;margin-bottom:8px;">Удалить рецензию?</h3>
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
-          «{{ editingReview?.title }}» будет удалена без возможности восстановления.
-        </p>
-        <div class="flex items-center gap-3" style="justify-content:flex-end;">
-          <button class="btn btn-ghost" @click="showDeleteConfirm = false">Отмена</button>
-          <button class="btn btn-primary" style="background:#ef4444;" @click="confirmDelete">Удалить</button>
+    <Transition name="modal">
+      <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
+        <div class="confirm-box glass" @click.stop>
+          <div style="font-size:32px;margin-bottom:12px;">🗑</div>
+          <h3 style="font-weight:700;margin-bottom:8px;">Удалить рецензию?</h3>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            «{{ editingReview?.title }}» будет удалена без возможности восстановления.
+          </p>
+          <div class="flex items-center gap-3" style="justify-content:flex-end;">
+            <button class="btn btn-ghost" @click="showDeleteConfirm = false">Отмена</button>
+            <button class="btn btn-primary" style="background:var(--dusty-rose);" @click="confirmDelete">Удалить</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
     
     <!-- Диалог выбора эпизода -->
     <EpisodePickerModal 
@@ -539,7 +542,7 @@ const tabs = [
     key: 'watching',
     icon: '📺',
     label: 'Смотрю',
-    countBg: 'rgba(6,182,212,0.3)',
+    countBg: 'rgba(192, 133, 82, 0.25)', // Caramel
     emptyTitle: 'Сейчас ничего не смотришь',
     emptyDesc: 'Добавь то, что смотришь прямо сейчас',
   },
@@ -547,7 +550,7 @@ const tabs = [
     key: 'on_hold',
     icon: '⏸',
     label: 'Отложено',
-    countBg: 'rgba(234,179,8,0.3)', // yellow-ish
+    countBg: 'rgba(107, 74, 54, 0.25)', // Mocha
     emptyTitle: 'Нет отложенных',
     emptyDesc: 'Здесь будут тайтлы, отложенные на потом',
   },
@@ -555,7 +558,7 @@ const tabs = [
     key: 'completed',
     icon: '✅',
     label: 'Просмотрено',
-    countBg: 'rgba(34,197,94,0.3)',
+    countBg: 'rgba(124, 154, 110, 0.25)', // Matcha
     emptyTitle: 'Список просмотренного пуст',
     emptyDesc: 'Добавляй фильмы и аниме, которые уже посмотрел',
   },
@@ -563,7 +566,7 @@ const tabs = [
     key: 'planned',
     icon: '📋',
     label: 'Запланировано',
-    countBg: 'rgba(99,102,241,0.3)',
+    countBg: 'rgba(192, 133, 82, 0.15)', // Light Caramel
     emptyTitle: 'Список планов пуст',
     emptyDesc: 'Добавляй что планируешь посмотреть',
   },
@@ -571,7 +574,7 @@ const tabs = [
     key: 'dropped',
     icon: '⛔',
     label: 'Брошено',
-    countBg: 'rgba(239,68,68,0.3)',
+    countBg: 'rgba(201, 112, 100, 0.25)', // Dusty Rose
     emptyTitle: 'Брошенного нет',
     emptyDesc: 'Здесь будет то, что не смог досмотреть',
   },
@@ -584,11 +587,11 @@ const contentTypes = [
 ]
 
 const statusOptions = [
-  { value: 'watching',  icon: '📺', label: 'Смотрю',       color: '#06b6d4' },
-  { value: 'completed', icon: '✅', label: 'Просмотрено',  color: '#22c55e' },
-  { value: 'planned',   icon: '📋', label: 'Запланировано', color: '#6366f1' },
-  { value: 'on_hold',   icon: '⏸', label: 'Отложено',     color: '#eab308' },
-  { value: 'dropped',   icon: '⛔', label: 'Брошено',      color: '#ef4444' },
+  { value: 'watching',  icon: '📺', label: 'Смотрю',       color: 'var(--caramel)' },
+  { value: 'completed', icon: '✅', label: 'Просмотрено',  color: 'var(--matcha)' },
+  { value: 'planned',   icon: '📋', label: 'Запланировано', color: 'var(--caramel)' },
+  { value: 'on_hold',   icon: '⏸', label: 'Отложено',     color: 'var(--mocha)' },
+  { value: 'dropped',   icon: '⛔', label: 'Брошено',      color: 'var(--dusty-rose)' },
 ]
 
 // ── Поиск и фильтры ──
@@ -1007,16 +1010,16 @@ async function handleDeleteLink(linkId) {
 // ── Вспомогательные функции ──
 
 const posterGradients = {
-  movie:  'linear-gradient(135deg, #312e81 0%, #1e1b4b 100%)',
-  anime:  'linear-gradient(135deg, #831843 0%, #500724 100%)',
-  series: 'linear-gradient(135deg, #134e4a 0%, #042f2e 100%)',
+  movie:  'linear-gradient(135deg, var(--espresso) 0%, #291c15 100%)',
+  anime:  'linear-gradient(135deg, var(--mocha) 0%, var(--cinnamon) 100%)',
+  series: 'linear-gradient(135deg, var(--espresso) 0%, var(--mocha) 100%)',
 }
 
 function posterStyle(rev) {
   return { background: posterGradients[rev.content_type] || posterGradients.movie }
 }
 
-const typeColors = { movie: '#6366f1', anime: '#ec4899', series: '#06b6d4' }
+const typeColors = { movie: 'var(--caramel)', anime: 'var(--cinnamon)', series: 'var(--mocha)' }
 const typeIcons  = { movie: '🎬', anime: '✨', series: '📺' }
 const typeLabels = { movie: 'Фильм', anime: 'Аниме', series: 'Сериал' }
 
@@ -1082,16 +1085,15 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .rv-body {
   flex: 1;
   padding: 24px;
-  background: var(--bg-body);
 }
 
 .btn-increment-ep {
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #a5b4fc;
+  background: rgba(192, 133, 82, 0.12);
+  border: 1px solid rgba(192, 133, 82, 0.3);
+  color: var(--primary);
   font-size: 10.5px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: 4px;
   cursor: pointer;
   margin-left: 4px;
@@ -1099,30 +1101,31 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 .btn-increment-ep:hover {
   background: var(--primary);
-  color: white;
+  color: var(--latte-foam);
   border-color: var(--primary);
 }
 
 /* ══ Навбар ══ */
-.rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
+.rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); transition: background-color 0.3s; }
 .rv-nav-inner { padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; }
 .nav-sep { width: 1px; height: 20px; background: var(--border); }
 .add-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px; border-radius: var(--radius-md);
-  background: var(--primary); border: none; color: white;
+  background: var(--primary); border: none; color: var(--latte-foam);
   font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px var(--primary-glow);
 }
-.add-btn:hover { opacity: 0.85; transform: scale(1.02); }
+.add-btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px var(--primary-glow); }
 
 /* ══ Табы ══ */
 .status-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.01);
+  background: var(--glass-bg);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1134,16 +1137,20 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   border-radius: var(--radius-md);
   background: transparent; border: 1px solid transparent;
   color: var(--text-secondary); cursor: pointer;
-  font-size: 13px; font-weight: 500;
+  font-size: 13px; font-weight: 600;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.status-tab:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
-.status-tab.active {
-  background: rgba(255,255,255,0.06);
-  border-color: var(--border);
+.status-tab:hover {
+  background: var(--btn-ghost-hover-bg);
   color: var(--text-primary);
-  font-weight: 600;
+}
+.status-tab.active {
+  background: var(--bg-surface);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
 }
 .tab-icon { font-size: 15px; }
 .tab-count {
@@ -1154,8 +1161,6 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 
 /* ══ Тело ══ */
-.rv-body { flex: 1; padding: 24px; }
-
 .empty-state {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -1167,21 +1172,22 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .rv-card {
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
+  box-shadow: var(--shadow-sm);
 }
 .rv-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(99,102,241,0.4);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Постер */
@@ -1190,9 +1196,8 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   padding-bottom: 145%; /* соотношение ~2:3 */
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--bg-base);
 }
 
 .poster-img {
@@ -1208,7 +1213,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .poster-skeleton {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(255,255,255,0.02);
+  background: var(--bg-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1216,54 +1221,55 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 .card-poster-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
+  background: linear-gradient(to top, rgba(59, 42, 32, 0.9) 0%, transparent 50%);
   pointer-events: none;
 }
 .card-type-badge {
   position: relative; z-index: 1;
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 20px;
-  font-size: 11px; font-weight: 700; color: white;
+  font-size: 11px; font-weight: 700; color: var(--latte-foam);
   align-self: flex-start;
 }
 .card-rating {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(59, 42, 32, 0.85);
   backdrop-filter: blur(8px);
   padding: 4px 8px;
   border-radius: 8px;
-  color: white;
+  color: var(--latte-foam);
   display: flex;
   align-items: center;
   gap: 2px;
   font-size: 13px;
   font-weight: 700;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .shikimori-badge {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: rgba(33, 33, 33, 0.85);
+  background: rgba(59, 42, 32, 0.85);
   backdrop-filter: blur(4px);
   padding: 3px 6px;
   border-radius: 4px;
-  color: #fff;
+  color: var(--latte-foam);
   font-size: 10px;
   font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
 }
 
 /* Информация */
-.card-info { padding: 10px 12px 12px; }
+.card-info { padding: 12px 14px 14px; }
 .card-title {
-  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14.5px; font-weight: 700; color: var(--text-primary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; line-height: 1.4; margin-bottom: 4px;
+  overflow: hidden; line-height: 1.4; margin-bottom: 6px;
 }
 .card-notes {
   font-size: 12px; color: var(--text-muted);
@@ -1272,14 +1278,14 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 .card-links { display: flex; flex-wrap: wrap; gap: 5px; }
 .link-pill {
-  font-size: 11px; font-weight: 500;
+  font-size: 11px; font-weight: 600;
   padding: 3px 9px; border-radius: 20px;
-  background: rgba(255,255,255,0.06);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary); text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.15s;
 }
-.link-pill:hover { background: rgba(99,102,241,0.25); color: #fff; }
+.link-pill:hover { background: rgba(192, 133, 82, 0.2); color: var(--text-primary); border-color: var(--primary); }
 
 .watch-together-btn {
   display: inline-flex;
@@ -1287,21 +1293,20 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   gap: 6px;
   padding: 5px 12px;
   border-radius: var(--radius-md, 8px);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-  color: #c7d2fe;
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, rgba(192, 133, 82, 0.15) 0%, rgba(169, 103, 59, 0.15) 100%);
+  color: var(--primary);
+  border: 1px solid rgba(192, 133, 82, 0.35);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-sm);
 }
 .watch-together-btn:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
-  color: #ffffff;
-  border-color: rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, rgba(192, 133, 82, 0.25) 0%, rgba(169, 103, 59, 0.25) 100%);
+  border-color: var(--primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 .watch-together-btn:active {
   transform: translateY(0);
@@ -1310,12 +1315,15 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 /* ══ Модал ══ */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  background: rgba(59, 42, 32, 0.55); backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 20px;
 }
 .modal-box {
-  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   width: 100%; max-width: 520px;
   max-height: 90vh;
   display: flex; flex-direction: column;
@@ -1327,15 +1335,15 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.modal-title { font-size: 17px; font-weight: 700; }
+.modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); }
 .modal-close {
   width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(255,255,255,0.06); border: none;
+  background: var(--btn-ghost-bg); border: 1px solid var(--border);
   color: var(--text-secondary); cursor: pointer; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
+  transition: all 0.15s;
 }
-.modal-close:hover { background: rgba(255,255,255,0.12); }
+.modal-close:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); border-color: var(--border-hover); }
 
 .modal-body {
   overflow-y: auto; padding: 18px 22px;
@@ -1355,12 +1363,12 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .form-group { display: flex; flex-direction: column; gap: 7px; }
 .form-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .form-input, .form-textarea {
-  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  background: var(--form-bg); border: 1px solid var(--border);
   border-radius: var(--radius-md); color: var(--text-primary);
   font-size: 14px; padding: 9px 12px; outline: none;
-  transition: border-color 0.2s; font-family: inherit; width: 100%;
+  transition: all 0.2s; font-family: inherit; width: 100%;
 }
-.form-input:focus, .form-textarea:focus { border-color: var(--primary); }
+.form-input:focus, .form-textarea:focus { border-color: var(--primary); background: var(--form-focus-bg); box-shadow: 0 0 0 3px rgba(192, 133, 82, 0.15); }
 .form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); }
 .form-textarea { resize: vertical; min-height: 60px; }
 
@@ -1368,37 +1376,38 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .type-selector { display: flex; gap: 8px; }
 .type-btn {
   flex: 1; padding: 9px 6px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); background: var(--btn-ghost-bg);
   color: var(--text-secondary); cursor: pointer; font-size: 13px;
   transition: all 0.15s; text-align: center;
 }
-.type-btn:hover { background: rgba(255,255,255,0.07); color: var(--text-primary); }
-.type-btn.active { border-color: var(--primary); background: rgba(99,102,241,0.15); color: #a5b4fc; font-weight: 600; }
+.type-btn:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
+.type-btn.active { border-color: var(--primary); background: rgba(192, 133, 82, 0.15); color: var(--primary); font-weight: 600; }
 
 /* Статус */
 .status-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .status-opt {
   padding: 8px 10px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); background: var(--btn-ghost-bg);
   color: var(--text-secondary); cursor: pointer; font-size: 12px;
   transition: all 0.15s;
 }
-.status-opt:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.status-opt:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
 .status-opt.active { font-weight: 600; color: var(--text-primary); }
 
 /* Рейтинг */
 .rating-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .rating-btn {
   width: 32px; height: 32px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); background: var(--btn-ghost-bg);
   color: var(--text-secondary); cursor: pointer; font-size: 13px;
   font-weight: 600; transition: all 0.15s;
 }
-.rating-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-.rating-btn.active { background: rgba(251,191,36,0.2); border-color: rgba(251,191,36,0.5); color: #fbbf24; }
-.rating-btn.active.high { background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.5); color: #4ade80; }
-.rating-btn.active.mid  { background: rgba(251,191,36,0.2); border-color: rgba(251,191,36,0.5); color: #fbbf24; }
-.clear-btn { font-size: 11px; color: #f87171; border-color: rgba(248,113,113,0.3); }
+.rating-btn:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
+.rating-btn.active { background: rgba(192, 133, 82, 0.15); border-color: var(--primary); color: var(--primary); }
+.rating-btn.active.high { background: rgba(124, 154, 110, 0.2); border-color: rgba(124, 154, 110, 0.5); color: var(--matcha); }
+.rating-btn.active.mid  { background: rgba(192, 133, 82, 0.2); border-color: rgba(192, 133, 82, 0.5); color: var(--caramel); }
+.rating-btn.active.low  { background: rgba(201, 112, 100, 0.2); border-color: rgba(201, 112, 100, 0.5); color: var(--dusty-rose); }
+.clear-btn { font-size: 11px; color: var(--dusty-rose); border-color: rgba(201, 112, 100, 0.3); }
 
 /* Постер превью */
 .poster-preview {
@@ -1407,22 +1416,22 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   overflow: hidden;
   max-height: 180px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  background: var(--form-bg); border: 1px solid var(--border);
 }
 .poster-preview img { max-height: 180px; object-fit: contain; width: 100%; }
-.poster-error { font-size: 12px; color: #f87171; padding: 12px; }
+.poster-error { font-size: 12px; color: var(--dusty-rose); padding: 12px; }
 
 /* Существующие ссылки */
 .existing-links { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
 .existing-link {
   display: flex; align-items: center; justify-content: space-between;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  background: var(--form-bg); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 7px 10px; gap: 8px;
 }
 .link-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .link-label-text { font-size: 12px; font-weight: 600; color: var(--text-primary); }
 .link-url-text {
-  font-size: 11px; color: #a5b4fc; text-decoration: none;
+  font-size: 11px; color: var(--primary); text-decoration: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .link-url-text:hover { text-decoration: underline; }
@@ -1435,12 +1444,12 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .link-label-input, .link-url-input { font-size: 13px; padding: 7px 10px; }
 .link-del-btn {
   width: 28px; height: 28px; border-radius: var(--radius-md);
-  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3);
-  color: #f87171; cursor: pointer; font-size: 12px;
+  background: rgba(201, 112, 100, 0.1); border: 1px solid rgba(201, 112, 100, 0.3);
+  color: var(--dusty-rose); cursor: pointer; font-size: 12px;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s; flex-shrink: 0;
 }
-.link-del-btn:hover { background: rgba(248,113,113,0.2); }
+.link-del-btn:hover { background: rgba(201, 112, 100, 0.2); }
 
 .add-link-btn {
   display: flex; align-items: center; gap: 6px;
@@ -1449,7 +1458,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   color: var(--text-muted); cursor: pointer; font-size: 13px;
   transition: all 0.15s; width: 100%; justify-content: center;
 }
-.add-link-btn:hover { border-color: var(--primary); color: #a5b4fc; background: rgba(99,102,241,0.05); }
+.add-link-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--form-focus-bg); }
 
 /* Фильтры и поиск */
 .filter-panel {
@@ -1457,6 +1466,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   padding: 14px 20px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
+  background: var(--glass-bg);
 }
 .radio-label {
   display: inline-flex;
@@ -1470,7 +1480,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   accent-color: var(--primary);
 }
 .filter-genre-btn {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   padding: 3px 8px;
@@ -1480,29 +1490,30 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   transition: all 0.15s;
 }
 .filter-genre-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--btn-ghost-hover-bg);
   color: var(--text-primary);
 }
 .filter-genre-btn.active {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgba(192, 133, 82, 0.15);
   border-color: var(--primary);
-  color: white;
+  color: var(--primary);
+  font-weight: 600;
 }
 .reset-filters-btn {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.2);
+  color: var(--dusty-rose);
+  border-color: rgba(201, 112, 100, 0.2);
 }
 .reset-filters-btn:hover {
-  background: rgba(248, 113, 113, 0.08);
-  color: #f87171;
+  background: rgba(201, 112, 100, 0.08);
+  color: var(--dusty-rose);
 }
 
 /* Жанры на карточке */
 .card-genre-pill {
   font-size: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   display: inline-block;
@@ -1513,9 +1524,9 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #a5b4fc;
+  background: rgba(192, 133, 82, 0.1);
+  border: 1px solid rgba(192, 133, 82, 0.2);
+  color: var(--primary);
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -1524,16 +1535,17 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 .genre-del-btn {
   background: transparent;
   border: none;
-  color: #fca5a5;
+  color: var(--dusty-rose);
   cursor: pointer;
   font-size: 12px;
   font-weight: bold;
+  opacity: 0.8;
 }
 .genre-del-btn:hover {
-  color: #ef4444;
+  opacity: 1;
 }
 .quick-genre-btn {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   padding: 4px 8px;
@@ -1543,13 +1555,13 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   transition: all 0.15s;
 }
 .quick-genre-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--btn-ghost-hover-bg);
   color: var(--text-primary);
 }
 .quick-genre-btn.active {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(192, 133, 82, 0.15);
   border-color: var(--primary);
-  color: white;
+  color: var(--primary);
 }
 
 .nav-link-toggle {
@@ -1563,16 +1575,17 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 .nav-link-toggle:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.05);
+  background: var(--btn-ghost-hover-bg);
 }
 .nav-link-toggle.active {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
   font-weight: 600;
 }
 .badge-invites-count {
-  background: #ef4444;
-  color: white;
+  background: var(--dusty-rose);
+  color: var(--latte-foam);
   font-size: 10px;
   font-weight: 700;
   border-radius: 50%;
@@ -1593,41 +1606,41 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   .new-link-row { grid-template-columns: 1fr; }
 }
 
+/* ══ Modern Pills ══ */
 .modern-pills {
   display: inline-flex;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--form-bg);
+  border: 1px solid var(--border);
   border-radius: 9999px;
-  padding: 4px;
+  padding: 3px;
 }
 .pill-btn {
   padding: 6px 14px;
   border-radius: 9999px;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
   background: transparent;
   border: none;
   cursor: pointer;
 }
 .pill-btn:hover {
-  color: var(--text-main);
+  color: var(--text-primary);
 }
 .pill-btn.active {
-  background: var(--primary-color, #6366f1);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  background: var(--primary);
+  color: var(--latte-foam);
+  box-shadow: 0 2px 8px var(--primary-glow);
 }
 
-</style>
-
-<style scoped>
 /* Shikimori Filter */
 .shikimori-filter {
   display: flex;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--form-bg);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 4px;
+  padding: 3px;
   gap: 4px;
 }
 .shikimori-btn {
@@ -1643,73 +1656,45 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   opacity: 0.6;
 }
 .shikimori-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--btn-ghost-hover-bg);
   opacity: 0.9;
 }
 .shikimori-btn.active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
   opacity: 1;
 }
 .shiki-icon {
   width: 14px;
   height: 14px;
-  border: 2px solid white;
+  border: 2px solid var(--text-primary);
   border-radius: 3px;
 }
 .shiki-full {
-  background: white;
+  background: var(--text-primary);
 }
 .shiki-empty {
   background: transparent;
 }
 .shiki-half {
-  background: linear-gradient(135deg, white 50%, transparent 50%);
+  background: linear-gradient(135deg, var(--text-primary) 50%, transparent 50%);
 }
 
-.modern-pills {
-  display: inline-flex;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 9999px;
-  padding: 4px;
-}
-.pill-btn {
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-.pill-btn:hover {
-  color: var(--text-main);
-}
-.pill-btn.active {
-  background: var(--primary-color, #6366f1);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
-}
-
-</style>
-
-<style scoped>
 .btn-sync {
   position: relative;
   overflow: hidden;
   transition: all 0.3s;
 }
 .btn-sync.is-syncing {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(192, 133, 82, 0.5);
+  background: rgba(192, 133, 82, 0.05);
 }
 .sync-progress {
   position: absolute;
   bottom: 0;
   left: 0;
   height: 3px;
-  background: #3b82f6; /* primary color */
+  background: var(--primary);
   transition: width 0.4s ease-out;
   border-radius: 0 2px 0 0;
 }

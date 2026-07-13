@@ -385,218 +385,230 @@
     </div>
 
     <!-- ══ МОДАЛЬНОЕ ОКНО: Входящие приглашения ══ -->
-    <div v-if="showInvitesModal" class="modal-overlay" @click.self="showInvitesModal = false">
-      <div class="modal-box glass" style="max-width: 440px;">
-        <div class="modal-header">
-          <h3 class="modal-title">📨 Приглашения в группы</h3>
-          <button class="modal-close" @click="showInvitesModal = false">✕</button>
-        </div>
-        <div class="modal-body" style="padding: 20px;">
-          <div v-if="groupsStore.invites.length === 0" style="text-align:center; padding: 20px 0; color: var(--text-muted);">
-            Нет активных приглашений
+    <Transition name="modal">
+      <div v-if="showInvitesModal" class="modal-overlay" @click.self="showInvitesModal = false">
+        <div class="modal-box glass" style="max-width: 440px;">
+          <div class="modal-header">
+            <h3 class="modal-title">📨 Приглашения в группы</h3>
+            <button class="modal-close" @click="showInvitesModal = false">✕</button>
           </div>
-          <div v-else class="invites-list flex flex-col gap-3">
-            <div v-for="inv in groupsStore.invites" :key="inv.id" class="invite-card glass p-3 rounded-lg flex flex-col gap-2">
-              <div>
-                Группа <span style="font-weight:700; color:white;">«{{ inv.group_name }}»</span>
-              </div>
-              <div style="font-size:12px; color: var(--text-muted);">
-                Пригласил: <span style="color:var(--text-secondary);">{{ inv.inviter_username }}</span>
-              </div>
-              <div class="flex gap-2 justify-end mt-1">
-                <button class="btn btn-ghost btn-xs text-red-400" @click="declineInvite(inv.id)">Отклонить</button>
-                <button class="btn btn-primary btn-xs" @click="acceptInvite(inv.id)">Принять</button>
+          <div class="modal-body" style="padding: 20px;">
+            <div v-if="groupsStore.invites.length === 0" style="text-align:center; padding: 20px 0; color: var(--text-muted);">
+              Нет активных приглашений
+            </div>
+            <div v-else class="invites-list flex flex-col gap-3">
+              <div v-for="inv in groupsStore.invites" :key="inv.id" class="invite-card glass p-3 rounded-lg flex flex-col gap-2">
+                <div>
+                  Группа <span style="font-weight:700; color:var(--text-primary);">«{{ inv.group_name }}»</span>
+                </div>
+                <div style="font-size:12px; color: var(--text-muted);">
+                  Пригласил: <span style="color:var(--text-secondary);">{{ inv.inviter_username }}</span>
+                </div>
+                <div class="flex gap-2 justify-end mt-1">
+                  <button class="btn btn-ghost btn-xs" style="color: var(--dusty-rose); border-color: rgba(201, 112, 100, 0.2);" @click="declineInvite(inv.id)">Отклонить</button>
+                  <button class="btn btn-primary btn-xs" @click="acceptInvite(inv.id)">Принять</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- ══ МОДАЛЬНОЕ ОКНО: Создание группы ══ -->
-    <div v-if="showCreateGroupModal" class="modal-overlay" @click.self="showCreateGroupModal = false">
-      <div class="modal-box glass" style="max-width:440px;">
-        <div class="modal-header">
-          <h3 class="modal-title">👥 Создание группы</h3>
-          <button class="modal-close" @click="showCreateGroupModal = false">✕</button>
-        </div>
-        <div class="modal-body" style="padding: 20px;">
-          <div class="form-group">
-            <label class="form-label">Название группы *</label>
-            <input v-model="groupForm.name" type="text" class="form-input" placeholder="Например: Movie Night" />
+    <Transition name="modal">
+      <div v-if="showCreateGroupModal" class="modal-overlay" @click.self="showCreateGroupModal = false">
+        <div class="modal-box glass" style="max-width:440px;">
+          <div class="modal-header">
+            <h3 class="modal-title">👥 Создание группы</h3>
+            <button class="modal-close" @click="showCreateGroupModal = false">✕</button>
           </div>
+          <div class="modal-body" style="padding: 20px;">
+            <div class="form-group">
+              <label class="form-label">Название группы *</label>
+              <input v-model="groupForm.name" type="text" class="form-input" placeholder="Например: Movie Night" />
+            </div>
 
-          <div class="form-group mt-4">
-            <label class="form-label">Пригласить друзей</label>
-            <div class="friends-invite-checkboxes max-h-[180px] overflow-y-auto mt-2 pr-1">
-              <div v-if="friends.length === 0" style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px;">
-                У вас нет друзей. Вы сможете пригласить других пользователей позже по ID.
-              </div>
-              <div v-for="friend in friends" :key="friend.id" class="friend-checkbox-row flex items-center gap-2 py-1.5">
-                <input 
-                  type="checkbox" 
-                  :id="'friend-' + friend.id"
-                  :value="friend.id"
-                  v-model="groupForm.inviteIds"
-                />
-                <label :for="'friend-' + friend.id" style="font-size:13px; color:var(--text-primary); cursor:pointer;">
-                  {{ friend.username }} <span style="font-size:11px; color:var(--text-muted);">(#{{ friend.id }})</span>
-                </label>
+            <div class="form-group mt-4">
+              <label class="form-label">Пригласить друзей</label>
+              <div class="friends-invite-checkboxes max-h-[180px] overflow-y-auto mt-2 pr-1">
+                <div v-if="friends.length === 0" style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px;">
+                  У вас нет друзей. Вы сможете пригласить других пользователей позже по ID.
+                </div>
+                <div v-for="friend in friends" :key="friend.id" class="friend-checkbox-row flex items-center gap-2 py-1.5">
+                  <input 
+                    type="checkbox" 
+                    :id="'friend-' + friend.id"
+                    :value="friend.id"
+                    v-model="groupForm.inviteIds"
+                  />
+                  <label :for="'friend-' + friend.id" style="font-size:13px; color:var(--text-primary); cursor:pointer;">
+                    {{ friend.username }} <span style="font-size:11px; color:var(--text-muted);">(#{{ friend.id }})</span>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="flex gap-3 justify-end mt-6">
-            <button class="btn btn-ghost" @click="showCreateGroupModal = false">Отмена</button>
-            <button class="btn btn-primary" :disabled="!groupForm.name" @click="createGroup">Создать</button>
+            <div class="flex gap-3 justify-end mt-6">
+              <button class="btn btn-ghost" @click="showCreateGroupModal = false">Отмена</button>
+              <button class="btn btn-primary" :disabled="!groupForm.name" @click="createGroup">Создать</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- ══ МОДАЛЬНОЕ ОКНО: Добавить / Редактировать запись в группе ══ -->
-    <div v-if="showItemModal" class="modal-overlay" @click.self="closeItemModal">
-      <div class="modal-box glass">
-        <div class="modal-header">
-          <h3 class="modal-title">{{ isEditingItem ? 'Редактировать запись' : 'Добавить запись' }}</h3>
-          <button class="modal-close" @click="closeItemModal">✕</button>
-        </div>
-        <div class="modal-body" style="padding:20px;">
-          <AnimeSearchStep 
-            v-if="showAnimeSearch"
-            @select="handleAnimeSelect"
-            @skip="showAnimeSearch = false"
-          />
-          <MovieSearchStep
-            v-else-if="showMovieSearch"
-            @select="handleMovieSelect"
-            @skip="showMovieSearch = false"
-          />
-          <template v-else>
-          <!-- Тип контента -->
-          <div class="form-group">
-            <label class="form-label">Тип</label>
-            <div class="type-selector">
-              <button
-                v-for="t in contentTypes"
-                :key="t.value"
-                class="type-btn"
-                :class="{ active: itemForm.content_type === t.value }"
-                @click="itemForm.content_type = t.value"
-              >{{ t.icon }} {{ t.label }}</button>
-            </div>
+    <Transition name="modal">
+      <div v-if="showItemModal" class="modal-overlay" @click.self="closeItemModal">
+        <div class="modal-box glass" @click.stop>
+          <div class="modal-header">
+            <h3 class="modal-title">{{ isEditingItem ? 'Редактировать запись' : 'Добавить запись' }}</h3>
+            <button class="modal-close" @click="closeItemModal">✕</button>
           </div>
-
-          <!-- Кнопка поиска для аниме -->
-          <div v-if="itemForm.content_type === 'anime' && !isEditingItem" class="mt-4 mb-2">
-            <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
-              🔍 Найти на Shikimori (Автозаполнение)
-            </button>
-          </div>
-          <div v-if="(itemForm.content_type === 'movie' || itemForm.content_type === 'series') && !isEditingItem" class="mt-4 mb-2">
-            <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
-              🔍 Найти на TMDB (Автозаполнение)
-            </button>
-          </div>
-
-          <!-- Название -->
-          <div class="form-group mt-4">
-            <label class="form-label">Название *</label>
-            <input v-model="itemForm.title" type="text" class="form-input" placeholder="Введите название..." />
-          </div>
-
-          <!-- Прогресс серий (Текущая / Всего) -->
-          <div class="grid grid-cols-2 gap-4 mt-4">
+          <div class="modal-body" style="padding:20px;">
+            <AnimeSearchStep 
+              v-if="showAnimeSearch"
+              @select="handleAnimeSelect"
+              @skip="showAnimeSearch = false"
+            />
+            <MovieSearchStep
+              v-else-if="showMovieSearch"
+              @select="handleMovieSelect"
+              @skip="showMovieSearch = false"
+            />
+            <template v-else>
+            <!-- Тип контента -->
             <div class="form-group">
-              <label class="form-label">Текущая серия *</label>
-              <input v-model.number="itemForm.current_episode" type="number" min="1" class="form-input" placeholder="1" />
+              <label class="form-label">Тип</label>
+              <div class="type-selector">
+                <button
+                  v-for="t in contentTypes"
+                  :key="t.value"
+                  class="type-btn"
+                  :class="{ active: itemForm.content_type === t.value }"
+                  @click="itemForm.content_type = t.value"
+                >{{ t.icon }} {{ t.label }}</button>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Всего серий *</label>
-              <input v-model.number="itemForm.max_episodes" type="number" min="1" class="form-input" placeholder="1" />
+
+            <!-- Кнопка поиска для аниме -->
+            <div v-if="itemForm.content_type === 'anime' && !isEditingItem" class="mt-4 mb-2">
+              <button class="btn btn-primary w-full text-sm py-2" @click="showAnimeSearch = true">
+                🔍 Найти на Shikimori (Автозаполнение)
+              </button>
             </div>
-          </div>
+            <div v-if="(itemForm.content_type === 'movie' || itemForm.content_type === 'series') && !isEditingItem" class="mt-4 mb-2">
+              <button class="btn btn-primary w-full text-sm py-2" @click="showMovieSearch = true">
+                🔍 Найти на TMDB (Автозаполнение)
+              </button>
+            </div>
 
-          <!-- Статус -->
-          <div class="form-group mt-4">
-            <label class="form-label">Статус просмотра</label>
-            <select v-model="itemForm.status" class="form-input">
-              <option value="watching">📺 Смотрю</option>
-              <option value="completed">✅ Просмотрено</option>
-              <option value="planned">📋 Запланировано</option>
-              <option value="dropped">⛔ Брошено</option>
-            </select>
-          </div>
+            <!-- Название -->
+            <div class="form-group mt-4">
+              <label class="form-label">Название *</label>
+              <input v-model="itemForm.title" type="text" class="form-input" placeholder="Введите название..." />
+            </div>
 
-          <!-- Постер URL -->
-          <div class="form-group mt-4">
-            <label class="form-label">URL постера</label>
-            <input v-model="itemForm.poster_url" type="url" class="form-input" placeholder="https://ссылка-на-картинку..." />
-          </div>
+            <!-- Прогресс серий (Текущая / Всего) -->
+            <div class="grid grid-cols-2 gap-4 mt-4">
+              <div class="form-group">
+                <label class="form-label">Текущая серия *</label>
+                <input v-model.number="itemForm.current_episode" type="number" min="1" class="form-input" placeholder="1" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Всего серий *</label>
+                <input v-model.number="itemForm.max_episodes" type="number" min="1" class="form-input" placeholder="1" />
+              </div>
+            </div>
 
-          <!-- Жанры -->
-          <div class="form-group mt-4">
-            <label class="form-label">Жанры (через запятую)</label>
-            <input v-model="itemForm.genresString" type="text" class="form-input" placeholder="Аниме, Комедия, Боевик..." />
-          </div>
+            <!-- Статус -->
+            <div class="form-group mt-4">
+              <label class="form-label">Статус просмотра</label>
+              <select v-model="itemForm.status" class="form-input">
+                <option value="watching">📺 Смотрю</option>
+                <option value="completed">✅ Просмотрено</option>
+                <option value="planned">📋 Запланировано</option>
+                <option value="dropped">⛔ Брошено</option>
+              </select>
+            </div>
 
-          <!-- Заметки -->
-          <div class="form-group mt-4">
-            <label class="form-label">Заметки</label>
-            <textarea v-model="itemForm.notes" class="form-input" rows="3" placeholder="Ваши мысли..."></textarea>
-          </div>
+            <!-- Постер URL -->
+            <div class="form-group mt-4">
+              <label class="form-label">URL постера</label>
+              <input v-model="itemForm.poster_url" type="url" class="form-input" placeholder="https://ссылка-на-картинку..." />
+            </div>
 
-          <div class="flex gap-3 justify-end mt-6">
-            <button class="btn btn-ghost" @click="closeItemModal">Отмена</button>
-            <button class="btn btn-primary" :disabled="!itemForm.title || isSaving" @click="saveItem">{{ isSaving ? 'Сохранение...' : 'Сохранить' }}</button>
+            <!-- Жанры -->
+            <div class="form-group mt-4">
+              <label class="form-label">Жанры (через запятую)</label>
+              <input v-model="itemForm.genresString" type="text" class="form-input" placeholder="Аниме, Комедия, Боевик..." />
+            </div>
+
+            <!-- Заметки -->
+            <div class="form-group mt-4">
+              <label class="form-label">Заметки</label>
+              <textarea v-model="itemForm.notes" class="form-input" rows="3" placeholder="Ваши мысли..."></textarea>
+            </div>
+
+            <div class="flex gap-3 justify-end mt-6">
+              <button class="btn btn-ghost" @click="closeItemModal">Отмена</button>
+              <button class="btn btn-primary" :disabled="!itemForm.title || isSaving" @click="saveItem">{{ isSaving ? 'Сохранение...' : 'Сохранить' }}</button>
+            </div>
+            </template>
           </div>
-          </template>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- Диалоги подтверждения -->
-    <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
-      <div class="confirm-box glass">
-        <div style="font-size:32px;margin-bottom:12px;">🗑</div>
-        <h3 style="font-weight:700;margin-bottom:8px;">Удалить запись?</h3>
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
-          Запись «{{ itemToDelete?.title }}» будет удалена из группового списка.
-        </p>
-        <div class="flex items-center gap-3" style="justify-content:flex-end;">
-          <button class="btn btn-ghost" @click="showDeleteConfirm = false">Отмена</button>
-          <button class="btn btn-primary" style="background:#ef4444;" @click="confirmDeleteItem">Удалить</button>
+    <Transition name="modal">
+      <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
+        <div class="confirm-box glass" @click.stop>
+          <div style="font-size:32px;margin-bottom:12px;">🗑</div>
+          <h3 style="font-weight:700;margin-bottom:8px;">Удалить запись?</h3>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            Запись «{{ itemToDelete?.title }}» будет удалена из группового списка.
+          </p>
+          <div class="flex items-center gap-3" style="justify-content:flex-end;">
+            <button class="btn btn-ghost" @click="showDeleteConfirm = false">Отмена</button>
+            <button class="btn btn-primary" style="background:var(--dusty-rose);" @click="confirmDeleteItem">Удалить</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
-    <div v-if="showDeleteGroupConfirm" class="modal-overlay" @click.self="showDeleteGroupConfirm = false">
-      <div class="confirm-box glass">
-        <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
-        <h3 style="font-weight:700;margin-bottom:8px;">Удалить группу?</h3>
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
-          Группа «{{ activeGroup?.name }}» и весь совместный список будут безвозвратно удалены.
-        </p>
-        <div class="flex items-center gap-3" style="justify-content:flex-end;">
-          <button class="btn btn-ghost" @click="showDeleteGroupConfirm = false">Отмена</button>
-          <button class="btn btn-primary" style="background:#ef4444;" @click="confirmDeleteGroup">Удалить</button>
+    <Transition name="modal">
+      <div v-if="showDeleteGroupConfirm" class="modal-overlay" @click.self="showDeleteGroupConfirm = false">
+        <div class="confirm-box glass" @click.stop>
+          <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+          <h3 style="font-weight:700;margin-bottom:8px;">Удалить группу?</h3>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            Группа «{{ activeGroup?.name }}» и весь совместный список будут безвозвратно удалены.
+          </p>
+          <div class="flex items-center gap-3" style="justify-content:flex-end;">
+            <button class="btn btn-ghost" @click="showDeleteGroupConfirm = false">Отмена</button>
+            <button class="btn btn-primary" style="background:var(--dusty-rose);" @click="confirmDeleteGroup">Удалить</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
-    <div v-if="showLeaveConfirm" class="modal-overlay" @click.self="showLeaveConfirm = false">
-      <div class="confirm-box glass">
-        <div style="font-size:32px;margin-bottom:12px;">🚪</div>
-        <h3 style="font-weight:700;margin-bottom:8px;">Выйти из группы?</h3>
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
-          Вы больше не сможете просматривать совместный список группы «{{ activeGroup?.name }}».
-        </p>
-        <div class="flex items-center gap-3" style="justify-content:flex-end;">
-          <button class="btn btn-ghost" @click="showLeaveConfirm = false">Отмена</button>
-          <button class="btn btn-primary" style="background:#ef4444;" @click="confirmLeaveGroup">Выйти</button>
+    <Transition name="modal">
+      <div v-if="showLeaveConfirm" class="modal-overlay" @click.self="showLeaveConfirm = false">
+        <div class="confirm-box glass" @click.stop>
+          <div style="font-size:32px;margin-bottom:12px;">🚪</div>
+          <h3 style="font-weight:700;margin-bottom:8px;">Выйти из группы?</h3>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            Вы больше не сможете просматривать совместный список группы «{{ activeGroup?.name }}».
+          </p>
+          <div class="flex items-center gap-3" style="justify-content:flex-end;">
+            <button class="btn btn-ghost" @click="showLeaveConfirm = false">Отмена</button>
+            <button class="btn btn-primary" style="background:var(--dusty-rose);" @click="confirmLeaveGroup">Выйти</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- Диалог выбора эпизода -->
     <EpisodePickerModal 
@@ -719,10 +731,10 @@ const activeGroup = computed(() => groupsStore.activeGroup)
 
 // ── Табы и типы ──
 const tabs = [
-  { key: 'watching',  icon: '📺', label: 'Смотрю', countBg: 'rgba(6,182,212,0.3)' },
-  { key: 'completed', icon: '✅', label: 'Просмотрено', countBg: 'rgba(34,197,94,0.3)' },
-  { key: 'planned',   icon: '📋', label: 'Запланировано', countBg: 'rgba(99,102,241,0.3)' },
-  { key: 'dropped',   icon: '⛔', label: 'Брошено', countBg: 'rgba(239,68,68,0.3)' },
+  { key: 'watching',  icon: '📺', label: 'Смотрю', countBg: 'rgba(192, 133, 82, 0.25)' },
+  { key: 'completed', icon: '✅', label: 'Просмотрено', countBg: 'rgba(124, 154, 110, 0.25)' },
+  { key: 'planned',   icon: '📋', label: 'Запланировано', countBg: 'rgba(192, 133, 82, 0.15)' },
+  { key: 'dropped',   icon: '⛔', label: 'Брошено', countBg: 'rgba(201, 112, 100, 0.25)' },
 ]
 
 const contentTypes = [
@@ -1212,7 +1224,7 @@ function posterStyle(item) {
     }
   }
   return {
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+    background: 'linear-gradient(135deg, var(--espresso) 0%, #291c15 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1256,17 +1268,18 @@ function typeColor(type) {
 }
 
 /* Навбар */
-.rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
+.rv-nav { border-radius: 0; border: none; border-bottom: 1px solid var(--border); transition: background-color 0.3s; }
 .rv-nav-inner { padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; }
 .nav-sep { width: 1px; height: 20px; background: var(--border); }
 .add-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px; border-radius: var(--radius-md);
-  background: var(--primary); border: none; color: white;
+  background: var(--primary); border: none; color: var(--latte-foam);
   font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px var(--primary-glow);
 }
-.add-btn:hover { opacity: 0.85; transform: scale(1.02); }
+.add-btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px var(--primary-glow); }
 
 .nav-link-toggle {
   font-size: 13px;
@@ -1279,17 +1292,18 @@ function typeColor(type) {
 }
 .nav-link-toggle:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.05);
+  background: var(--btn-ghost-hover-bg);
 }
 .nav-link-toggle.active {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
   font-weight: 600;
 }
 
 .badge-invites-count {
-  background: #ef4444;
-  color: white;
+  background: var(--dusty-rose);
+  color: var(--latte-foam);
   font-size: 10px;
   font-weight: 700;
   border-radius: 50%;
@@ -1312,7 +1326,7 @@ function typeColor(type) {
   width: 280px;
   flex-shrink: 0;
   border-right: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--glass-bg);
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -1324,14 +1338,14 @@ function typeColor(type) {
   margin-bottom: 16px;
 }
 .sidebar-header h3 {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .icon-btn {
-  background: rgba(255,255,255,0.06);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-primary);
   width: 28px;
@@ -1342,10 +1356,11 @@ function typeColor(type) {
   align-items: center;
   justify-content: center;
   font-size: 15px;
-  transition: background 0.15s;
+  transition: all 0.15s;
 }
 .icon-btn:hover {
-  background: rgba(255,255,255,0.12);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--border-hover);
 }
 
 .groups-list {
@@ -1365,16 +1380,16 @@ function typeColor(type) {
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--form-bg);
   cursor: pointer;
   transition: all 0.2s;
 }
 .group-item:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--btn-ghost-hover-bg);
 }
 .group-item.active {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(192, 133, 82, 0.08);
+  border-color: rgba(192, 133, 82, 0.3);
 }
 .group-name {
   font-size: 13.5px;
@@ -1411,7 +1426,7 @@ function typeColor(type) {
   transition: color 0.15s;
 }
 .leave-btn:hover {
-  color: #f87171;
+  color: var(--dusty-rose);
 }
 .members-list {
   display: flex;
@@ -1429,21 +1444,21 @@ function typeColor(type) {
 .member-dot {
   width: 6px;
   height: 6px;
-  background: #10b981;
+  background: var(--matcha);
   border-radius: 50%;
 }
 .member-name {
   font-size: 12.5px;
   color: var(--text-secondary);
-  flex-1: 1;
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .owner-badge {
   font-size: 9px;
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
+  background: rgba(192, 133, 82, 0.15);
+  color: var(--primary);
   padding: 1px 5px;
   border-radius: 4px;
   font-weight: 700;
@@ -1460,11 +1475,11 @@ function typeColor(type) {
 }
 .error-msg {
   font-size: 11px;
-  color: #f87171;
+  color: var(--dusty-rose);
 }
 .success-msg {
   font-size: 11px;
-  color: #4ade80;
+  color: var(--matcha);
 }
 
 /* Главный контент */
@@ -1488,14 +1503,15 @@ function typeColor(type) {
   border-radius: var(--radius-xl);
   text-align: center;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.01);
+  background: var(--glass-bg);
 }
 .bubble-icon {
   font-size: 48px;
   margin-bottom: 16px;
 }
 .empty-bubble h3 {
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -1512,22 +1528,25 @@ function typeColor(type) {
   gap: 20px;
 }
 .watchlist-header h2 {
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
 }
 .ping-dot {
   width: 8px;
   height: 8px;
-  background: #10b981;
+  background: var(--matcha);
   border-radius: 50%;
-  box-shadow: 0 0 8px #10b981;
+  box-shadow: 0 0 8px var(--matcha);
 }
 
 /* Табы статусов */
 .status-tabs {
   display: flex;
-  gap: 4px;
-  background: rgba(255,255,255,0.01);
+  gap: 6px;
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1538,16 +1557,20 @@ function typeColor(type) {
   border-radius: var(--radius-md);
   background: transparent; border: 1px solid transparent;
   color: var(--text-secondary); cursor: pointer;
-  font-size: 13px; font-weight: 500;
+  font-size: 13px; font-weight: 600;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.status-tab:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
-.status-tab.active {
-  background: rgba(255,255,255,0.06);
-  border-color: var(--border);
+.status-tab:hover {
+  background: var(--btn-ghost-hover-bg);
   color: var(--text-primary);
-  font-weight: 600;
+}
+.status-tab.active {
+  background: var(--bg-surface);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
 }
 .tab-icon { font-size: 15px; }
 .tab-count {
@@ -1562,6 +1585,7 @@ function typeColor(type) {
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+  background: var(--glass-bg);
 }
 .radio-label {
   display: flex;
@@ -1600,15 +1624,17 @@ function typeColor(type) {
   gap: 20px;
 }
 .rv-card {
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: transform 0.2s, border-color 0.2s;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
+  box-shadow: var(--shadow-sm);
 }
 .rv-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(99,102,241,0.4);
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
 }
 .card-poster {
   position: relative;
@@ -1620,25 +1646,26 @@ function typeColor(type) {
 }
 .card-poster-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+  background: linear-gradient(to top, rgba(59, 42, 32, 0.9) 0%, transparent 60%);
   pointer-events: none;
 }
 .card-type-badge {
   position: relative; z-index: 1;
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 20px;
-  font-size: 10.5px; font-weight: 700; color: white;
+  font-size: 10.5px; font-weight: 700; color: var(--latte-foam);
   align-self: flex-start;
 }
 .card-rating {
   position: relative; z-index: 1;
-  display: flex; align-items: baseline; gap: 2px;
-  background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; gap: 2px;
+  background: rgba(59, 42, 32, 0.85); backdrop-filter: blur(8px);
   padding: 4px 8px; border-radius: 8px;
+  border: 1px solid var(--border);
   cursor: help;
 }
-.rating-star { font-size: 13px; color: #fbbf24; }
-.rating-num  { font-size: 15px; font-weight: 700; color: white; }
+.rating-star { font-size: 13px; color: var(--primary); }
+.rating-num  { font-size: 14px; font-weight: 700; color: var(--latte-foam); }
 
 /* Тултипы с оценками */
 .tooltip-ratings {
@@ -1650,7 +1677,7 @@ function typeColor(type) {
   bottom: 125%;
   right: 0;
   width: 160px;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-primary);
   text-align: left;
@@ -1659,7 +1686,7 @@ function typeColor(type) {
   z-index: 100;
   opacity: 0;
   transition: opacity 0.2s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-md);
   pointer-events: none;
 }
 .tooltip-ratings:hover .tooltip-text {
@@ -1670,9 +1697,10 @@ function typeColor(type) {
 /* Инфо */
 .card-info { padding: 14px; }
 .card-title-row {
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 .card-title {
+  font-family: var(--font-sans);
   font-size: 15px; font-weight: 700; color: var(--text-primary);
   line-height: 1.4;
 }
@@ -1701,8 +1729,8 @@ function typeColor(type) {
 }
 .card-genre-pill {
   font-size: 10px;
-  background: rgba(255,255,255,0.05);
-  color: var(--text-secondary);
+  background: var(--btn-ghost-bg);
+  color: var(--text-muted);
   padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid var(--border);
@@ -1710,7 +1738,7 @@ function typeColor(type) {
 .card-notes {
   font-size: 12px;
   color: var(--text-secondary);
-  background: rgba(255,255,255,0.02);
+  background: var(--form-bg);
   border-radius: 8px;
   padding: 8px 10px;
   line-height: 1.4;
@@ -1719,14 +1747,14 @@ function typeColor(type) {
 
 /* Оценка (Personal Voting) */
 .item-personal-vote {
-  background: rgba(255,255,255,0.015);
+  background: var(--form-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 8px 10px;
 }
 .btn-clear-rating {
   font-size: 10px;
-  color: #f87171;
+  color: var(--dusty-rose);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1736,7 +1764,7 @@ function typeColor(type) {
   justify-content: space-between;
 }
 .star-pill-btn {
-  background: rgba(255,255,255,0.04);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   width: 20px;
@@ -1751,14 +1779,14 @@ function typeColor(type) {
   transition: all 0.15s;
 }
 .star-pill-btn:hover {
-  background: rgba(251, 191, 36, 0.15);
-  border-color: #fbbf24;
-  color: #fbbf24;
+  background: rgba(192, 133, 82, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 .star-pill-btn.active {
-  background: #fbbf24;
-  border-color: #fbbf24;
-  color: black;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--latte-foam);
 }
 
 /* Ссылки */
@@ -1777,7 +1805,7 @@ function typeColor(type) {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(255,255,255,0.02);
+  background: var(--form-bg);
   padding: 8px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
@@ -1790,14 +1818,15 @@ function typeColor(type) {
   font-size: 11px;
   padding: 3px 9px;
   border-radius: 6px;
-  background: rgba(255,255,255,0.04);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   text-decoration: none;
 }
 .link-pill:hover {
-  background: rgba(99,102,241,0.15);
-  color: #a5b4fc;
+  background: rgba(192, 133, 82, 0.15);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .link-del-small {
   background: transparent;
@@ -1807,7 +1836,7 @@ function typeColor(type) {
   cursor: pointer;
 }
 .link-del-small:hover {
-  color: #f87171;
+  color: var(--dusty-rose);
 }
 
 .watch-together-btn {
@@ -1816,21 +1845,20 @@ function typeColor(type) {
   gap: 6px;
   padding: 5px 12px;
   border-radius: var(--radius-md, 8px);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-  color: #c7d2fe;
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, rgba(192, 133, 82, 0.15) 0%, rgba(169, 103, 59, 0.15) 100%);
+  color: var(--primary);
+  border: 1px solid rgba(192, 133, 82, 0.35);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-sm);
 }
 .watch-together-btn:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
-  color: #ffffff;
-  border-color: rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, rgba(192, 133, 82, 0.25) 0%, rgba(169, 103, 59, 0.25) 100%);
+  border-color: var(--primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 .watch-together-btn:active {
   transform: translateY(0);
@@ -1839,12 +1867,15 @@ function typeColor(type) {
 /* Модалки */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  background: rgba(59, 42, 32, 0.55); backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 20px;
 }
 .modal-box {
-  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   width: 100%; max-width: 520px;
   max-height: 90vh;
   display: flex; flex-direction: column;
@@ -1856,14 +1887,15 @@ function typeColor(type) {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.modal-title { font-size: 16px; font-weight: 700; }
+.modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); }
 .modal-close {
   width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(255,255,255,0.06); border: none;
+  background: var(--btn-ghost-bg); border: 1px solid var(--border);
   color: var(--text-secondary); font-size: 14px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
 }
-.modal-close:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+.modal-close:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); border-color: var(--border-hover); }
 
 .modal-body {
   flex: 1; overflow-y: auto; padding: 22px;
@@ -1873,36 +1905,38 @@ function typeColor(type) {
 .type-selector { display: flex; gap: 6px; }
 .type-btn {
   flex: 1; padding: 8px; border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  background: var(--btn-ghost-bg); border: 1px solid var(--border);
   color: var(--text-secondary); cursor: pointer; font-size: 13px;
   transition: all 0.2s;
 }
-.type-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.type-btn:hover { background: var(--btn-ghost-hover-bg); color: var(--text-primary); }
 .type-btn.active {
-  background: rgba(99,102,241,0.15); border-color: var(--primary);
-  color: white; font-weight: 600;
+  background: rgba(192, 133, 82, 0.15); border-color: var(--primary);
+  color: var(--primary); font-weight: 600;
 }
 
 /* Приглашения */
 .invite-card {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.02);
+  background: var(--form-bg);
 }
 
 /* Диалог подтверждения */
 .confirm-box {
   width: 100%; max-width: 380px; padding: 24px;
-  border-radius: var(--radius-xl); text-align: center;
+  border-radius: var(--radius-lg); text-align: center;
   border: 1px solid var(--border);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xl);
 }
 
 .btn-increment-ep {
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #a5b4fc;
+  background: rgba(192, 133, 82, 0.12);
+  border: 1px solid rgba(192, 133, 82, 0.3);
+  color: var(--primary);
   font-size: 10.5px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: 4px;
   cursor: pointer;
   margin-left: 4px;
@@ -1910,7 +1944,7 @@ function typeColor(type) {
 }
 .btn-increment-ep:hover {
   background: var(--primary);
-  color: white;
+  color: var(--latte-foam);
   border-color: var(--primary);
 }
 
@@ -1920,7 +1954,7 @@ function typeColor(type) {
   margin-top: 10px;
 }
 .quick-status-btn {
-  background: rgba(255,255,255,0.03);
+  background: var(--btn-ghost-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   width: 28px;
@@ -1933,20 +1967,21 @@ function typeColor(type) {
   transition: all 0.15s;
 }
 .quick-status-btn:hover {
-  background: rgba(255,255,255,0.08);
+  background: var(--btn-ghost-hover-bg);
 }
 .quick-status-btn.active {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(192, 133, 82, 0.15);
   border-color: var(--primary);
+  color: var(--primary);
 }
 
 .online-dot-small {
   width: 6px;
   height: 6px;
-  background-color: #4ade80;
+  background-color: var(--matcha);
   border-radius: 50%;
   display: inline-block;
-  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+  box-shadow: 0 0 6px rgba(124, 154, 110, 0.5);
 }
 
 /* Адаптив */
@@ -1962,5 +1997,35 @@ function typeColor(type) {
   .card-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Анимация модального окна */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-enter-active .modal-box,
+.modal-enter-active .confirm-box,
+.modal-leave-active .modal-box,
+.modal-leave-active .confirm-box {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.modal-enter-from {
+  opacity: 0;
+}
+.modal-enter-from .modal-box,
+.modal-enter-from .confirm-box {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-leave-to .modal-box,
+.modal-leave-to .confirm-box {
+  opacity: 0;
+  transform: scale(0.95);
 }
 </style>

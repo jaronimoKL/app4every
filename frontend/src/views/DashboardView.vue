@@ -5,11 +5,12 @@
 
       <!-- Приветствие -->
       <section class="welcome-section">
-        <div class="orb" style="width:500px;height:500px;background:#6366f1;top:-150px;right:-100px;opacity:0.08;"></div>
-        <div class="orb" style="width:300px;height:300px;background:#8b5cf6;bottom:0;left:-50px;opacity:0.07;"></div>
+        <div class="orb" style="width:500px;height:500px;background:var(--caramel);top:-150px;right:-100px;opacity:0.06;"></div>
+        <div class="orb" style="width:300px;height:300px;background:var(--cinnamon);bottom:0;left:-50px;opacity:0.05;"></div>
+        <div class="dot-grid"></div>
 
         <div class="welcome-content">
-          <div class="badge-chip" style="margin-bottom:16px;">
+          <div class="badge-chip badge-status-ok" style="margin-bottom:16px;">
             <span class="badge-dot"></span>
             Всё работает
           </div>
@@ -45,7 +46,7 @@
               <div class="module-desc">{{ mod.desc }}</div>
             </div>
             <div class="module-footer">
-              <span v-if="mod.link" class="badge-chip" style="font-size:11px;padding:3px 10px;">Открыть →</span>
+              <span v-if="mod.link" class="btn-open-cta">Открыть →</span>
               <span v-else class="coming-soon">Скоро</span>
               <div class="module-tech">
                 <span v-for="tag in mod.tech" :key="tag" class="tech-tag">{{ tag }}</span>
@@ -90,7 +91,7 @@ const modules = [
     icon: '📝',
     name: 'Заметки',
     desc: 'Полностью адаптивные заметки с автосохранением и поиском. Real-time синхронизация через WebSockets — в планах.',
-    iconBg: 'rgba(99,102,241,0.15)',
+    iconBg: 'rgba(169, 103, 59, 0.15)', // Cinnamon/Clay
     tech: ['Go', 'PostgreSQL'],
     link: '/notes',  // уже работает!
   },
@@ -98,7 +99,7 @@ const modules = [
     icon: '⭐',
     name: 'Рецензии',
     desc: 'Список просмотренного: фильмы, аниме, сериалы. 4 статуса + оценки + ссылки на Kinopoisk, IMDB, Shikimori.',
-    iconBg: 'rgba(245,158,11,0.15)',
+    iconBg: 'rgba(192, 133, 82, 0.15)', // Caramel/Ochre
     tech: ['Go', 'PostgreSQL'],
     link: '/reviews',
   },
@@ -106,7 +107,7 @@ const modules = [
     icon: '📹',
     name: 'Видеочат',
     desc: 'P2P видеозвонки и демонстрация экрана на базе WebRTC. Go выступает только сигнальным сервером.',
-    iconBg: 'rgba(6,182,212,0.15)',
+    iconBg: 'rgba(124, 154, 110, 0.18)', // Matcha/Sage
     tech: ['Go', 'WebRTC', 'WebSocket'],
     link: '/screenshare',
   },
@@ -114,7 +115,7 @@ const modules = [
     icon: '📺',
     name: 'Watch Party',
     desc: 'Смотри YouTube, Rutube и видеофайлы вместе с друзьями. Синхронный play/pause/seek.',
-    iconBg: 'rgba(239,68,68,0.15)',
+    iconBg: 'rgba(201, 112, 100, 0.15)', // Dusty-rose
     tech: ['Go', 'WebSocket', 'YouTube API'],
     link: '/watch',
   },
@@ -145,57 +146,6 @@ onMounted(async () => {
   position: relative;
 }
 
-/* ── Навбар ── */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-}
-
-.navbar-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 14px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.user-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px 6px 6px;
-  border-radius: 99px;
-}
-
-.user-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--violet));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.user-email {
-  font-size: 13px;
-  color: var(--text-secondary);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ── Основной контент ── */
 .dashboard-main {
   max-width: 1200px;
@@ -210,34 +160,45 @@ onMounted(async () => {
   padding: 60px 0 48px;
 }
 
-.welcome-content { position: relative; z-index: 1; }
+.welcome-content {
+  position: relative;
+  z-index: 1;
+}
 
 .welcome-title {
-  font-size: clamp(28px, 4vw, 48px);
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 52px);
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.badge-status-ok {
+  background: rgba(124, 154, 110, 0.12) !important;
+  border: 1px solid rgba(124, 154, 110, 0.25) !important;
+  color: var(--matcha) !important;
 }
 
 /* ── Секции ── */
 .section-title {
-  font-size: 18px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  font-size: 12px;
   letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
   margin-bottom: 16px;
 }
 
 /* ── Карточки модулей ── */
-.modules-section { margin-bottom: 40px; }
+.modules-section {
+  margin-bottom: 40px;
+}
 
 .modules-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .module-card {
@@ -247,16 +208,29 @@ onMounted(async () => {
   flex-direction: column;
   gap: 14px;
   min-height: 200px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-sm);
 }
 
-.module-info { flex: 1; }
+.module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.module-info {
+  flex: 1;
+}
+
 .module-name {
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 6px;
+  color: var(--text-primary);
 }
+
 .module-desc {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -266,6 +240,26 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-open-cta {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: var(--primary);
+  color: var(--latte-foam);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+.module-card:hover .btn-open-cta {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .module-tech {
@@ -275,22 +269,25 @@ onMounted(async () => {
 }
 
 .tech-tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: rgba(99,102,241,0.1);
-  color: #a5b4fc;
-  border: 1px solid rgba(99,102,241,0.2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(107, 74, 54, 0.08);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   font-weight: 500;
 }
 
 /* ── Стек ── */
-.stack-section { margin-bottom: 40px; }
+.stack-section {
+  margin-bottom: 40px;
+}
 
 .stack-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .stack-item {
@@ -299,9 +296,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
 }
 
-.stack-icon { font-size: 20px; flex-shrink: 0; }
+.stack-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.stack-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
 
 .status-dot {
   width: 8px;
@@ -310,9 +317,13 @@ onMounted(async () => {
   margin-left: auto;
   flex-shrink: 0;
 }
+
 .status-dot.online {
-  background: #22c55e;
-  box-shadow: 0 0 8px rgba(34,197,94,0.5);
+  background: var(--matcha);
+  box-shadow: 0 0 8px rgba(124, 154, 110, 0.5);
 }
-.status-dot.offline { background: #475569; }
+
+.status-dot.offline {
+  background: var(--text-muted);
+}
 </style>

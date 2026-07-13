@@ -1,10 +1,9 @@
 <template>
   <nav class="navbar glass">
     <div class="navbar-inner max-w-[1200px] mx-auto w-full flex justify-between items-center px-6 py-3">
-      <!-- Логотип -->
       <RouterLink to="/dashboard" class="flex items-center gap-3" style="text-decoration:none; color:inherit;">
-        <div class="logo-mark" style="width:36px;height:36px;font-size:16px;">⬡</div>
-        <span style="font-weight:700;font-size:16px;letter-spacing:-0.02em;">App4Every</span>
+        <div class="logo-mark" style="width:36px;height:36px;font-size:16px;color:var(--latte-foam);">⬡</div>
+        <span style="font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: var(--text-primary);">App4Every</span>
       </RouterLink>
 
       <!-- Навигация (центр) - если нужно, можно добавить ссылки -->
@@ -69,6 +68,7 @@ const userInitial = computed(() => {
   top: 0;
   z-index: 50;
   border-bottom: 1px solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .user-chip {
@@ -77,43 +77,61 @@ const userInitial = computed(() => {
   gap: 10px;
   padding: 6px 14px 6px 6px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg);
   border: 1px solid var(--border);
   transition: all 0.2s ease;
 }
 
 .user-chip:hover {
-  background: var(--glass-bg-hover);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: var(--glass-hover-bg);
+  border-color: var(--border-hover);
   transform: translateY(-1px);
 }
 
 .nav-link {
   color: var(--text-secondary);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.95rem;
-  padding: 4px 12px;
-  border-radius: 8px;
-  transition: all 0.2s;
+  padding: 6px 0;
+  margin: 0 10px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary);
+  transition: width 0.2s ease;
 }
 
 .nav-link:hover {
   color: var(--text-primary);
-  background: var(--glass-bg-hover);
+}
+
+.nav-link:hover::after {
+  width: 100%;
 }
 
 .nav-link.active {
   color: var(--primary);
-  background: rgba(139, 92, 246, 0.1);
+}
+
+.nav-link.active::after {
+  width: 100%;
 }
 
 .user-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--violet));
-  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--cinnamon));
+  color: var(--latte-foam);
   display: flex;
   align-items: center;
   justify-content: center;
