@@ -24,42 +24,19 @@
           ☰ Настройки
         </button>
 
-        <!-- Hero баннер (общий для всех вкладок) -->
-        <div class="profile-hero-card glass mb-6">
-          <div class="hero-inner-flex">
-            <!-- Аватар с инициалом -->
-            <div class="hero-avatar-circle">
-              {{ userInitial }}
-            </div>
-            
-            <div class="hero-profile-meta">
-              <h1 class="hero-username">{{ auth.user?.username || auth.user?.email }}</h1>
-              <p class="hero-email">{{ auth.user?.email }}</p>
-              
-              <!-- Копируемый ID -->
-              <div class="hero-id-badge" v-if="auth.user?.id">
-                <span>ID: <code>{{ auth.user?.id }}</code></span>
-                <button class="hero-copy-btn" @click="copyUserID">
-                  {{ copied ? 'Скопировано!' : '📋 Копировать ID' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Метрики-плашки -->
-            <div class="hero-metrics-row">
-              <div class="metric-pill">
-                <span class="metric-value">{{ friends.length }}</span>
-                <span class="metric-label">друзей</span>
-              </div>
-              <div class="metric-pill">
-                <span class="metric-value">1</span>
-                <span class="metric-label">сессия</span>
-              </div>
-              <div class="metric-pill">
-                <span class="metric-value">{{ invites.length }}</span>
-                <span class="metric-label">инвайтов</span>
-              </div>
-            </div>
+        <!-- Панель метрик (растянутая на всю ширину, без дублирования аватара) -->
+        <div class="profile-metrics-header mb-6">
+          <div class="metric-card glass">
+            <span class="metric-value">{{ friends.length }}</span>
+            <span class="metric-label">друзей</span>
+          </div>
+          <div class="metric-card glass">
+            <span class="metric-value">1</span>
+            <span class="metric-label">сессия</span>
+          </div>
+          <div class="metric-card glass">
+            <span class="metric-value">{{ invites.length }}</span>
+            <span class="metric-label">инвайтов</span>
           </div>
         </div>
 
@@ -733,117 +710,44 @@ function showFriendsMsg(text, type) {
   background: var(--btn-ghost-hover-bg);
 }
 
-/* ── Hero баннер ── */
-.profile-hero-card {
-  padding: 24px;
+/* ── Панель метрик настроек ── */
+.profile-metrics-header {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.metric-card {
+  padding: 16px 20px;
   border-radius: var(--radius-xl);
   background: var(--bg-surface);
   border: 1px solid var(--border);
-}
-
-.hero-inner-flex {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.hero-avatar-circle {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--espresso);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 800;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-md);
-}
-[data-theme='latte'] .hero-avatar-circle {
-  color: var(--latte-foam);
-}
-
-.hero-profile-meta {
-  flex: 1;
-  min-width: 200px;
-}
-
-.hero-username {
-  font-family: var(--font-sans);
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-
-.hero-email {
-  font-size: 13.5px;
-  color: var(--text-muted);
-}
-
-.hero-id-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  background: var(--form-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px;
-  font-size: 11px;
-}
-.hero-id-badge code {
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-}
-.hero-copy-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-weight: 600;
-  transition: color 0.2s;
-  padding: 0 4px;
-  font-size: 10px;
-  border-radius: var(--radius-sm);
-}
-.hero-copy-btn:hover {
-  color: var(--primary);
-}
-
-/* Метрики */
-.hero-metrics-row {
-  display: flex;
-  gap: 12px;
-}
-
-.metric-pill {
-  background: var(--form-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 10px 16px;
-  min-width: 80px;
-  text-align: center;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
 }
 
 .metric-value {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--primary);
 }
 
 .metric-label {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 /* ── Настройки карточек ── */

@@ -1,31 +1,26 @@
 <template>
   <aside class="app-sidebar" :class="{ expanded: isExpanded, 'is-local': isLocal }">
     
-    <!-- TOP LOGO / BURGER CONTAINER -->
-    <div class="sidebar-top-section">
-      <div v-if="!isLocal" class="logo-wrapper" @click="!isExpanded && (isExpanded = true)">
-        <component 
-          :is="isExpanded ? 'RouterLink' : 'div'" 
-          to="/dashboard" 
-          class="logo-pod-link"
-          :style="{ cursor: !isExpanded ? 'pointer' : 'inherit' }"
-        >
+    <!-- TOP LOCAL USER PROFILE (Only if isLocal is true) -->
+    <div v-if="isLocal" class="local-sidebar-profile" @click="isExpanded = !isExpanded" style="cursor: pointer;" title="Свернуть/Развернуть">
+      <div class="local-profile-avatar">{{ userInitial }}</div>
+      <div class="local-profile-info" v-if="isExpanded">
+        <div class="local-profile-name">{{ authStore.user?.username || authStore.user?.email?.split('@')[0] }}</div>
+        <div class="local-profile-id">ID: {{ authStore.user?.id }}</div>
+      </div>
+    </div>
+    <hr v-if="isLocal" class="local-sidebar-divider" />
+
+    <!-- TOP LOGO CONTAINER (Only if not local) -->
+    <div v-if="!isLocal" class="sidebar-top-section">
+      <div class="logo-wrapper">
+        <RouterLink to="/dashboard" class="logo-pod-link">
           <div class="logo-pod-box">
             <span class="logo-pod-text">A4E</span>
           </div>
           <span class="logo-brand-name" v-if="isExpanded">App4Every</span>
-        </component>
+        </RouterLink>
       </div>
-
-      <!-- Burger button (Only visible if expanded, or if local where there's no logo) -->
-      <button 
-        v-if="collapsible && (isExpanded || isLocal)" 
-        class="burger-btn" 
-        @click.stop="isExpanded = !isExpanded" 
-        title="Свернуть/Развернуть"
-      >
-        <span class="burger-icon">{{ isExpanded && isLocal ? '✕' : '☰' }}</span>
-      </button>
     </div>
 
     <!-- MIDDLE NAVIGATION ITEMS -->
@@ -66,6 +61,17 @@
         </button>
       </template>
     </nav>
+
+    <!-- Кнопка свернуть/развернуть -->
+    <button 
+      v-if="collapsible" 
+      class="sidebar-collapse-btn" 
+      @click="isExpanded = !isExpanded"
+      :title="!isExpanded ? 'Развернуть меню' : ''"
+    >
+      <span class="collapse-icon">{{ isExpanded ? '❮' : '❯' }}</span>
+      <span class="collapse-label" v-if="isExpanded">Свернуть</span>
+    </button>
 
     <!-- BOTTOM SECTION (Only if not local) -->
     <div v-if="!isLocal" class="sidebar-bottom-section">
@@ -185,7 +191,6 @@ const userInitial = computed(() => {
   width: 220px;
 }
 
-/* ── Local sidebar modifications ── */
 .app-sidebar.is-local {
   position: static;
   height: auto;
@@ -194,6 +199,58 @@ const userInitial = computed(() => {
   border: 1px solid var(--border);
   background: var(--bg-surface);
   padding: 16px 8px;
+}
+
+.local-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+}
+
+.local-profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--espresso);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+[data-theme='latte'] .local-profile-avatar {
+  color: var(--latte-foam);
+}
+
+.local-profile-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.local-profile-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.local-profile-id {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.local-sidebar-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0 16px 0;
 }
 
 /* ── Top Section ── */
@@ -246,24 +303,41 @@ const userInitial = computed(() => {
   white-space: nowrap;
 }
 
-.burger-btn {
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-secondary);
-  font-size: 18px;
   cursor: pointer;
-  width: 40px;
-  height: 40px;
   border-radius: var(--radius-md);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  white-space: nowrap;
+  text-align: left;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--btn-ghost-hover-bg);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.collapse-icon {
+  font-size: 11px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
   flex-shrink: 0;
 }
-.burger-btn:hover {
-  background: var(--btn-ghost-hover-bg);
-  color: var(--text-primary);
+
+.collapse-label {
+  font-size: 13.5px;
 }
 
 /* ── Menu Navigation Items ── */
