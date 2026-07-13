@@ -84,7 +84,7 @@ const userInitial = computed(() => {
 .header-container {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 150;
   padding: 14px 24px;
   width: 100%;
   pointer-events: none;
