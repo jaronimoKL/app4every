@@ -332,7 +332,7 @@ onMounted(async () => {
 
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -581,17 +581,21 @@ onMounted(async () => {
 }
 
 /* Адаптив */
-@media (max-width: 992px) {
+@media (max-width: 1280px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 640px) {
+  .modules-grid {
+    grid-template-columns: 1fr;
+  }
   .welcome-hero {
     padding: 24px;
   }
   .quick-stats-row {
+    flex-wrap: wrap;
     gap: 8px;
   }
   .stat-badge {

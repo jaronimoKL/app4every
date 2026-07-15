@@ -54,8 +54,17 @@
     <!-- ══ ОСНОВНОЙ КОНТЕНТ (SPLIT PANE CATALOG) ══ -->
     <div class="catalog-layout">
       
+      <!-- Оверлей мобильных фильтров -->
+      <div v-if="showMobileFilters" class="filters-backdrop xl:hidden" @click="showMobileFilters = false"></div>
+
       <!-- Левый Сайдбар Фильтров -->
-      <aside class="sidebar-filters glass">
+      <aside class="sidebar-filters glass" :class="{ 'is-mobile-open': showMobileFilters }">
+        <!-- Drawer close header (only visible on mobile/tablet) -->
+        <div class="drawer-header xl:hidden flex justify-between items-center mb-4">
+          <span class="drawer-title">Фильтры</span>
+          <button class="drawer-close-btn" @click="showMobileFilters = false">✕</button>
+        </div>
+
         <!-- Поиск -->
         <div class="sidebar-group">
           <label class="sidebar-label">Поиск</label>
@@ -159,6 +168,10 @@
           </div>
 
           <div class="view-mode-toggle">
+            <!-- Кнопка мобильных фильтров -->
+            <button class="mobile-filters-btn xl:hidden" @click="showMobileFilters = true" style="margin-right: 8px;">
+              <span>🔍</span> Фильтры
+            </button>
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'grid' }"
@@ -259,12 +272,13 @@
               
               <!-- Теги жанров на карточке -->
               <div class="card-genres flex flex-wrap gap-1 mb-2" v-if="rev.genres && rev.genres.length > 0">
-                <span v-for="g in rev.genres" :key="g.id" class="card-genre-pill">
+                <span v-for="g in rev.genres.slice(0, 2)" :key="g.id" class="card-genre-pill">
                   {{ g.name }}
                 </span>
+                <span v-if="rev.genres.length > 2" class="card-genre-pill badge-more">
+                  +{{ rev.genres.length - 2 }}
+                </span>
               </div>
-
-              <div class="card-notes" v-if="rev.notes">{{ rev.notes }}</div>
               
               <!-- Ссылки -->
               <div class="card-links" v-if="rev.links && rev.links.length > 0" @click.stop>
@@ -652,6 +666,7 @@ async function syncWithShikimori() {
 const loadedImages = ref({})
 const isLoadingMore = ref(false)
 const viewMode = ref(localStorage.getItem('reviews-view-mode') || 'grid')
+const showMobileFilters = ref(false)
 function toggleViewMode(mode) {
   viewMode.value = mode
   localStorage.setItem('reviews-view-mode', mode)
@@ -1278,6 +1293,10 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   background: var(--bg-surface);
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
 }
 .status-tabs-inner {
   display: flex;
@@ -1286,6 +1305,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  white-space: nowrap;
 }
 .status-tabs::-webkit-scrollbar { display: none; }
 
@@ -1298,6 +1318,8 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   font-size: 13px; font-weight: 600;
   white-space: nowrap;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  scroll-snap-align: start;
+  flex-shrink: 0;
 }
 .status-tab:hover {
   background: var(--btn-ghost-hover-bg);
@@ -1433,9 +1455,9 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 
 .source-btn.active {
-  background: var(--primary);
+  background: rgba(192, 133, 82, 0.15);
   border-color: var(--primary);
-  color: var(--latte-foam);
+  color: var(--primary);
 }
 
 .genres-multiselect {
@@ -1546,6 +1568,9 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   cursor: pointer;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
   box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .rv-card:hover {
   transform: translateY(-4px) scale(1.01);
@@ -1555,10 +1580,11 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 .card-poster {
   width: 100%;
-  padding-bottom: 140%;
+  aspect-ratio: 2 / 3;
   position: relative;
   overflow: hidden;
   background: var(--bg-base);
+  flex-shrink: 0;
 }
 
 .poster-img {
@@ -1634,16 +1660,19 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 .card-info {
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .card-title {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.3;
+  height: 2.6em;
   margin-bottom: 4px;
   overflow: hidden;
-  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1651,6 +1680,11 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 
 .card-genres {
   margin: 6px 0;
+  height: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .card-genre-pill {
@@ -1661,6 +1695,12 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
   color: var(--text-muted);
   padding: 1px 5px;
   border-radius: 4px;
+}
+
+.card-genre-pill.badge-more {
+  background: rgba(192, 133, 82, 0.1);
+  color: var(--primary);
+  border-color: rgba(192, 133, 82, 0.2);
 }
 
 .card-notes {
@@ -1675,7 +1715,7 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 
 .card-links {
-  margin-top: 10px;
+  margin-top: auto;
   border-top: 1px dashed var(--border);
   padding-top: 8px;
   display: flex;
@@ -2188,8 +2228,91 @@ function openWatchParty(videoUrl, shikimoriId, alias) {
 }
 
 /* Адаптив */
-@media (max-width: 992px) {
+.filters-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 16, 13, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 290;
+}
+
+.mobile-filters-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mobile-filters-btn:hover {
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
+}
+
+.drawer-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.drawer-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
+}
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.drawer-close-btn:hover {
+  color: var(--primary);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 1280px) {
   .catalog-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .sidebar-filters {
+    position: fixed;
+    top: 0;
+    left: -320px;
+    width: 300px;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--border);
+    z-index: 300;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 24px;
+    background: var(--bg-surface);
+  }
+  .sidebar-filters.is-mobile-open {
+    left: 0;
+  }
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .card-grid {
     grid-template-columns: 1fr;
   }
 }
