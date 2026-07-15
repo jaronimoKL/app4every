@@ -112,7 +112,7 @@
 
     <!-- Диалог подтверждения удаления -->
     <div v-if="showDeleteConfirm" class="confirm-overlay" @click.self="showDeleteConfirm = false">
-      <div class="confirm-dialog glass">
+      <div class="confirm-dialog">
         <div style="font-size:32px;margin-bottom:12px;">🗑</div>
         <h3 style="font-weight:700;margin-bottom:8px;">Удалить заметку?</h3>
         <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
@@ -415,8 +415,11 @@ function formatDate(dateStr) {
   z-index: 1000; padding: 24px;
 }
 .confirm-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl); padding: 28px 32px;
   max-width: 380px; width: 100%; text-align: center;
+  box-shadow: var(--shadow-xl);
 }
 
 /* ── Мобильный ── */

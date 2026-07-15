@@ -2,7 +2,7 @@
   <div class="room-layout">
     <header class="room-header glass">
       <div class="header-left">
-        <router-link to="/reviews" class="btn-back">🚪 Выйти к рецензиям</router-link>
+        <router-link to="/watch" class="btn-back">🚪 Выйти в лобби</router-link>
         <h2>📺 Watch Party</h2>
         <span class="room-id">Комната: {{ roomId }}</span>
       </div>
@@ -1057,8 +1057,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 60px);
-  background: var(--bg-color, #121212);
-  color: #fff;
+  background: var(--bg-base);
+  color: var(--text-primary);
   position: relative;
 }
 
@@ -1067,9 +1067,8 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   z-index: 10;
 }
 
@@ -1080,12 +1079,12 @@ onMounted(() => {
 }
 
 .btn-back {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   text-decoration: none;
   padding: 8px 16px;
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.2s ease;
@@ -1094,30 +1093,32 @@ onMounted(() => {
   gap: 6px;
 }
 .btn-back:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
   transform: translateY(-1px);
 }
 
 .header-left h2 {
   margin: 0;
   font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .room-id {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--form-bg);
+  border: 1px solid var(--border);
   padding: 4px 8px;
-  border-radius: 4px;
-  font-family: monospace;
-  color: #aaa;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 
 .btn-copy {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
   padding: 8px 16px;
-  border-radius: var(--radius-md, 12px);
-  color: #fff;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
@@ -1125,8 +1126,8 @@ onMounted(() => {
 }
 
 .btn-copy:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
   transform: translateY(-1px);
 }
 
@@ -1773,14 +1774,13 @@ h3 {
   width: 90%;
   max-width: 800px;
   max-height: 70vh;
-  background: rgba(20, 20, 20, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   z-index: 100;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-xl);
   padding: 20px;
 }
 
@@ -1793,22 +1793,24 @@ h3 {
 }
 
 .drawer-tab {
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   padding: 8px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 .drawer-tab:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
 }
 .drawer-tab.active {
-  background: var(--primary-color, #60a5fa);
-  color: #fff;
+  background: rgba(192, 133, 82, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .drawer-content {
@@ -1833,17 +1835,17 @@ h3 {
 .media-item-card {
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  background: var(--btn-ghost-bg);
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
 }
 .media-item-card:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
 }
 
 .media-item-poster {
@@ -1862,7 +1864,7 @@ h3 {
 .media-item-title {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1873,7 +1875,7 @@ h3 {
 
 .media-item-type {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   margin-top: auto;
   text-transform: capitalize;
 }
@@ -1888,16 +1890,16 @@ h3 {
   height: 4px;
 }
 .groups-slider::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--border);
   border-radius: 2px;
 }
 
 .group-pill {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--border);
   padding: 8px 16px;
-  border-radius: 20px;
-  color: #fff;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -1905,11 +1907,12 @@ h3 {
   transition: all 0.2s;
 }
 .group-pill:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--btn-ghost-hover-bg);
+  border-color: var(--primary);
 }
 .group-pill.active {
-  background: #10b981;
-  border-color: #34d399;
-  color: #fff;
+  background: rgba(192, 133, 82, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 </style>

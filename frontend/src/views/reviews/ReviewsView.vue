@@ -196,15 +196,15 @@
           <div class="spinner" style="width:32px;height:32px;"></div>
         </div>
 
-        <div v-else-if="currentReviews.length === 0" class="empty-state glass">
+        <div v-else-if="currentReviews.length === 0" class="empty-state">
           <template v-if="isAnyFilterActive">
-            <div style="font-size:44px;margin-bottom:12px;">🔍</div>
+            <div class="empty-state-icon">🔍</div>
             <h3 style="font-weight:700;font-size:16px;margin-bottom:6px;">Ничего не найдено</h3>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Попробуйте изменить параметры поиска или сбросить фильтры</p>
-            <button class="btn btn-primary text-xs py-2 px-4" @click="resetFilters">Сбросить фильтры</button>
+            <button class="btn btn-outline text-xs py-2 px-4" @click="resetFilters">Сбросить фильтры</button>
           </template>
           <template v-else>
-            <div style="font-size:44px;margin-bottom:12px;">{{ currentTab.icon }}</div>
+            <div class="empty-state-icon">{{ currentTab.icon }}</div>
             <h3 style="font-weight:700;font-size:16px;margin-bottom:6px;">{{ currentTab.emptyTitle }}</h3>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">{{ currentTab.emptyDesc }}</p>
             <button class="btn btn-primary text-xs py-2 px-4" @click="openCreate">Добавить</button>

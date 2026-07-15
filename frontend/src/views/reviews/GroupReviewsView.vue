@@ -276,8 +276,8 @@
               </div>
 
               <!-- Пустой список -->
-              <div v-if="filteredItems.length === 0" class="empty-state glass">
-                <div style="font-size:44px;margin-bottom:12px;">🔍</div>
+              <div v-if="filteredItems.length === 0" class="empty-state">
+                <div class="empty-state-icon">🔍</div>
                 <h3 style="font-weight:700;font-size:16px;margin-bottom:6px;">Ничего не найдено</h3>
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Попробуйте изменить параметры поиска или добавить новые фильмы</p>
               </div>

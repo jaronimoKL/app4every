@@ -33,6 +33,7 @@
           class="sidebar-item-link"
           :class="{ active: modelValue === item.key || $route?.path === item.route }"
           :title="!isExpanded ? item.title : ''"
+          @click="onItemClick"
         >
           <span class="sidebar-item-icon">{{ item.icon }}</span>
           <span class="sidebar-item-label" v-if="isExpanded">{{ item.title }}</span>
@@ -48,7 +49,7 @@
           v-else 
           class="sidebar-item-link"
           :class="{ active: modelValue === item.key }"
-          @click="emit('update:modelValue', item.key); item.action && item.action()"
+          @click="emit('update:modelValue', item.key); item.action && item.action(); onItemClick()"
           :title="!isExpanded ? item.title : ''"
         >
           <span class="sidebar-item-icon">{{ item.icon }}</span>
@@ -102,7 +103,7 @@
 
       <!-- User Info block -->
       <div class="sidebar-user-block">
-        <RouterLink to="/profile" class="user-profile-chip" :title="authStore.user?.username || 'Профиль'">
+        <RouterLink to="/profile" class="user-profile-chip" :title="authStore.user?.username || 'Профиль'" @click="onItemClick">
           <div class="user-avatar-circle">{{ userInitial }}</div>
           <div class="user-text-meta" v-if="isExpanded">
             <span class="user-meta-name">{{ authStore.user?.username || authStore.user?.email?.split('@')[0] }}</span>
@@ -168,6 +169,16 @@ const userInitial = computed(() => {
   const name = authStore.user?.username || authStore.user?.email || 'U'
   return name.charAt(0).toUpperCase()
 })
+
+function onItemClick() {
+  if (window.innerWidth < 769) {
+    if (!props.isLocal) {
+      sidebarStore.isGlobalExpanded = false
+    } else {
+      emit('update:expanded', false)
+    }
+  }
+}
 </script>
 
 <style scoped>

@@ -315,3 +315,37 @@ html, body {
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
+
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 32px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  margin: 20px 0;
+  width: 100%;
+}
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(192, 133, 82, 0.08); /* Caramel translucent */
+  border: 1px solid rgba(192, 133, 82, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 16px;
+  color: var(--primary);
+  animation: float-empty 3s ease-in-out infinite;
+}
+@keyframes float-empty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}

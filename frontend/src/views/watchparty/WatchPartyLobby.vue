@@ -2,8 +2,8 @@
   <div class="lobby-container flex flex-col">
     <!-- Header with Back Button -->
     <div class="w-full max-w-[900px] mb-6 flex justify-between items-center px-4 md:px-0">
-      <button class="btn-back flex items-center gap-2 text-sm" @click="$router.back()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn btn-ghost flex items-center gap-2 text-sm" @click="$router.back()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px;">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
@@ -13,7 +13,7 @@
 
     <div class="lobby-content">
       <!-- Left side: Active Rooms -->
-      <div class="active-rooms-panel glass-panel">
+      <div class="active-rooms-panel panel-card glass">
         <h2 class="panel-title flex items-center gap-2">
           <span class="online-dot-large"></span>
           Активные комнаты
@@ -22,30 +22,31 @@
           <span>Друзья и участники групп</span>
         </div>
         
-        <div v-if="loading && activeRooms.length === 0" class="text-center py-8 text-gray-400">
+        <div v-if="loading && activeRooms.length === 0" class="text-center py-8 text-muted">
+          <div class="spinner mx-auto mb-2" style="width:24px;height:24px;"></div>
           Загрузка...
         </div>
-        <div v-else-if="activeRooms.length === 0" class="text-center py-8 text-gray-500 text-sm">
+        <div v-else-if="activeRooms.length === 0" class="text-center py-8 text-muted text-sm">
           Нет активных комнат
         </div>
         <div v-else class="rooms-list flex flex-col gap-3 mt-3 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
           <div 
             v-for="room in activeRooms" 
             :key="room.room_id"
-            class="active-room-card glass p-4 rounded-lg flex justify-between items-center hover:bg-white/5 transition-colors cursor-pointer border border-white/5"
+            class="active-room-card glass glass-hover p-4 rounded-lg flex justify-between items-center cursor-pointer"
             @click="joinSpecificRoom(room.room_id)"
           >
             <div class="room-info">
               <div class="room-title flex items-center gap-2">
                 <span class="online-dot"></span>
-                <span class="font-semibold text-white">Комната {{ room.room_id.substring(0, 4) }}</span>
+                <span class="font-semibold text-primary">Комната {{ room.room_id.substring(0, 4) }}</span>
               </div>
-              <div class="room-meta text-xs text-gray-400 mt-1.5 flex items-center gap-2">
+              <div class="room-meta text-xs text-muted mt-1.5 flex items-center gap-2">
                 <span class="flex items-center gap-1">👥 {{ room.participants?.length || 1 }}</span>
-                <span v-if="room.shikimori_id || room.aniliberty_alias" class="text-indigo-400">• Смотрят аниме</span>
+                <span v-if="room.shikimori_id || room.aniliberty_alias" style="color: var(--primary);">• Смотрят аниме</span>
               </div>
             </div>
-            <button class="btn primary-btn btn-sm" @click.stop="joinSpecificRoom(room.room_id)">
+            <button class="btn btn-outline btn-sm" @click.stop="joinSpecificRoom(room.room_id)">
               Войти
             </button>
           </div>
@@ -53,20 +54,20 @@
       </div>
 
       <!-- Right side: Create/Join -->
-      <div class="lobby-card glass-panel">
-        <h1 class="title">📺 Совместный просмотр</h1>
+      <div class="lobby-card panel-card glass">
+        <h1 class="title">📺 Watch Party</h1>
         
         <div class="section create-room">
           <h3>Создать комнату</h3>
-          <label>Ссылка на видео (YouTube, Rutube, .mp4):</label>
+          <label class="form-label">Ссылка на видео (YouTube, Rutube, .mp4):</label>
           <input 
             v-model="newRoomUrl" 
             type="text" 
             placeholder="https://youtube.com/watch?v=..." 
-            class="input-field"
+            class="form-input"
             @keyup.enter="createRoom"
           />
-          <button @click="createRoom" class="btn primary-btn" :disabled="!newRoomUrl">
+          <button @click="createRoom" class="btn btn-primary mt-2" :disabled="!newRoomUrl">
             🎬 Создать комнату
           </button>
         </div>
@@ -76,16 +77,16 @@
         </div>
 
         <div class="section join-room">
-          <label>Код комнаты:</label>
+          <label class="form-label">Код комнаты:</label>
           <div class="join-row">
             <input 
               v-model="joinRoomId" 
               type="text" 
               placeholder="abc123" 
-              class="input-field"
+              class="form-input"
               @keyup.enter="joinRoom"
             />
-            <button @click="joinRoom" class="btn secondary-btn" :disabled="!joinRoomId">
+            <button @click="joinRoom" class="btn btn-outline" :disabled="!joinRoomId">
               Войти →
             </button>
           </div>
@@ -183,41 +184,14 @@ function joinSpecificRoom(id) {
 </script>
 
 <style scoped>
-.online-dot {
-  width: 8px;
-  height: 8px;
-  background-color: #4ade80;
-  border-radius: 50%;
-  display: inline-block;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
-}
-.btn-sm {
-  padding: 8px 16px;
-  font-size: 0.85rem;
-}
-.btn-back {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-back:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .lobby-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   min-height: calc(100vh - 60px);
-  background: var(--bg-color, #1a1a1a);
-  color: #fff;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   padding: 40px 20px;
 }
 
@@ -233,16 +207,16 @@ function joinSpecificRoom(id) {
   .lobby-content {
     flex-direction: column;
     align-items: center;
+    gap: 20px;
   }
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+.panel-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .active-rooms-panel {
@@ -251,46 +225,44 @@ function joinSpecificRoom(id) {
   min-height: 380px;
 }
 
-.panel-title {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 8px;
-  color: #e0e0e0;
-}
-
-.online-dot-large {
-  width: 12px;
-  height: 12px;
-  background-color: #4ade80;
-  border-radius: 50%;
-  display: inline-block;
-  box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
 .lobby-card {
   width: 100%;
   max-width: 400px;
 }
 
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.online-dot-large {
+  width: 12px;
+  height: 12px;
+  background-color: var(--matcha);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 10px rgba(124, 154, 110, 0.6);
+}
+
+.online-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--matcha);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px rgba(124, 154, 110, 0.5);
+}
+
 .title {
   margin-top: 0;
   margin-bottom: 24px;
-  font-size: 1.5rem;
+  font-size: 22px;
   text-align: center;
-  color: #e0e0e0;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .section {
@@ -301,58 +273,21 @@ function joinSpecificRoom(id) {
 
 h3 {
   margin: 0;
-  font-size: 1.1rem;
-  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-label {
-  font-size: 0.9rem;
-  color: #aaa;
-}
-
-.input-field {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 12px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.btn {
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+.form-label {
+  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  color: var(--text-muted);
+  margin-bottom: -4px;
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.primary-btn {
-  background: #3b82f6;
-  color: #fff;
-}
-
-.secondary-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  white-space: nowrap;
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 .join-row {
@@ -360,7 +295,7 @@ label {
   gap: 8px;
 }
 
-.join-row .input-field {
+.join-row .form-input {
   flex: 1;
 }
 
@@ -369,18 +304,32 @@ label {
   align-items: center;
   text-align: center;
   margin: 24px 0;
-  color: #666;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .divider::before,
 .divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border);
 }
 
 .divider span {
   padding: 0 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }
 </style>
